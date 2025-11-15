@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, 
   Send, 
@@ -65,6 +65,17 @@ export function TransactionAgent({
     }
   }, [isOpen]);
 
+  const addMessage = useCallback((role: 'user' | 'assistant', content: string, suggestions?: AgentSuggestion[]) => {
+    const newMessage: AgentMessage = {
+      id: Date.now().toString(),
+      role,
+      content,
+      timestamp: new Date(),
+      suggestions
+    };
+    setMessages(prev => [...prev, newMessage]);
+  }, []);
+
   // Auto-suggestions based on context
   useEffect(() => {
     if (simpleWorkflow.length === 0 && messages.length === 1) {
@@ -80,7 +91,12 @@ export function TransactionAgent({
             title: 'Show available blocks',
             description: 'I can explain what each block does',
             action: () => {
-              addMessage('assistant', 'Here are some common blocks you can use:\n\n• Transfer SOL - Send SOL between accounts\n• Transfer Token - Send SPL tokens\n• Jupiter Swap - Swap tokens via Jupiter\n• Create ATA - Create Associated Token Account\n\nHover over any block to see detailed information!');
+              setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: 'Here are some common blocks you can use:\n\n• Transfer SOL - Send SOL between accounts\n• Transfer Token - Send SPL tokens\n• Jupiter Swap - Swap tokens via Jupiter\n• Create ATA - Create Associated Token Account\n\nHover over any block to see detailed information!',
+                timestamp: new Date()
+              }]);
             }
           }
         ]
@@ -115,7 +131,12 @@ export function TransactionAgent({
                 const emptyParams = Object.entries(block.params)
                   .filter(([_, val]) => !val || val === '')
                   .map(([key]) => key);
-                addMessage('assistant', `To configure ${block.name}, you need to fill:\n\n${emptyParams.map(p => `• ${p}`).join('\n')}\n\nWhat values would you like to use?`);
+                setMessages(prev => [...prev, {
+                  id: Date.now().toString(),
+                  role: 'assistant',
+                  content: `To configure ${block.name}, you need to fill:\n\n${emptyParams.map(p => `• ${p}`).join('\n')}\n\nWhat values would you like to use?`,
+                  timestamp: new Date()
+                }]);
               },
               data: block
             }))
@@ -142,7 +163,12 @@ export function TransactionAgent({
           title: `Fix: ${error}`,
           description: 'Get help with this error',
           action: () => {
-            addMessage('assistant', `Let's fix: ${error}\n\nCommon solutions:\n• Check address format (should be base58)\n• Verify amounts are in correct units\n• Ensure all required fields are filled\n\nWhat specific help do you need?`);
+            setMessages(prev => [...prev, {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: `Let's fix: ${error}\n\nCommon solutions:\n• Check address format (should be base58)\n• Verify amounts are in correct units\n• Ensure all required fields are filled\n\nWhat specific help do you need?`,
+              timestamp: new Date()
+            }]);
           }
         }))
       };
@@ -154,17 +180,6 @@ export function TransactionAgent({
       }
     }
   }, [simpleWorkflow.length, errors.length, messages.length]);
-
-  const addMessage = (role: 'user' | 'assistant', content: string, suggestions?: AgentSuggestion[]) => {
-    const newMessage: AgentMessage = {
-      id: Date.now().toString(),
-      role,
-      content,
-      timestamp: new Date(),
-      suggestions
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
 
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
@@ -327,8 +342,8 @@ export function TransactionAgent({
                 )}
                 <button
                   onClick={() => {
-                    const blocks = simpleWorkflow.map((b, i) => `${i + 1}. ${b.name}${Object.values(b.params).some(v => !v) ? ' (incomplete)' : ''}`).join('\n');
-                    addMessage('assistant', `📋 Your Transaction Summary:\n\n${blocks}\n\n${simpleWorkflow.length} block(s) total\n${simpleWorkflow.filter(b => Object.values(b.params).every(v => v)).length} complete\n${simpleWorkflow.filter(b => Object.values(b.params).some(v => !v)).length} need configuration`);
+                    const blocks = simpleWorkflow.map((b, i) => `${i + 1}. ${b.name}${Object.values(b.params).some(v => !v || v === '') ? ' (incomplete)' : ''}`).join('\n');
+                    addMessage('assistant', `📋 Your Transaction Summary:\n\n${blocks}\n\n${simpleWorkflow.length} block(s) total\n${simpleWorkflow.filter(b => Object.values(b.params).every(v => v && v !== '')).length} complete\n${simpleWorkflow.filter(b => Object.values(b.params).some(v => !v || v === '')).length} need configuration`);
                   }}
                   className="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors flex items-center gap-1.5"
                 >
