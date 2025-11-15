@@ -34,6 +34,7 @@ import { TransactionBuilder } from '../lib/transaction-builder';
 import { getTemplateById, getTemplatesByCategory } from '../lib/instructions/templates';
 import { BuiltInstruction, TransactionDraft, InstructionTemplate } from '../lib/instructions/types';
 import { PublicKey } from '@solana/web3.js';
+import { TransactionAgent } from './TransactionAgent';
 
 // --- Block to Instruction Template Mapping ---
 const BLOCK_TO_TEMPLATE: Record<string, string> = {
@@ -45,7 +46,7 @@ const BLOCK_TO_TEMPLATE: Record<string, string> = {
   'ata_create': 'spl_ata_create',
 };
 
-interface SimpleBlock {
+export interface SimpleBlock {
   id: string;
   name: string;
   icon: string;
@@ -1279,6 +1280,21 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       <div className="flex-1 overflow-hidden">
         {viewMode === 'simple' ? renderSimpleMode() : renderAdvancedMode()}
       </div>
+
+      {/* AI Agent */}
+      <TransactionAgent
+        simpleWorkflow={viewMode === 'simple' ? simpleWorkflow : []}
+        transactionDraft={viewMode === 'advanced' ? transactionDraft : undefined}
+        onAddBlock={viewMode === 'simple' ? addSimpleBlock : undefined}
+        onUpdateBlock={viewMode === 'simple' ? (blockId, params) => {
+          const block = simpleWorkflow.find(b => b.instanceId === blockId);
+          if (block) {
+            updateSimpleBlockParams(blockId, params);
+          }
+        } : undefined}
+        errors={buildError ? [buildError] : []}
+        warnings={[]}
+      />
     </div>
   );
 }
