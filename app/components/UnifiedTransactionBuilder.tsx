@@ -234,11 +234,24 @@ function BlockTooltip({
   children: React.ReactElement;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ left: 0, top: 0 });
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Get template info if available
   const templateId = BLOCK_TO_TEMPLATE[block.id];
   const blockTemplate = template || (templateId ? getTemplateById(templateId) : null);
+
+  // Update tooltip position when it shows
+  useEffect(() => {
+    if (showTooltip && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        left: rect.right + 12,
+        top: rect.top + (rect.height / 2)
+      });
+    }
+  }, [showTooltip]);
 
   // Get rules/validation info
   const getRules = () => {
@@ -274,12 +287,60 @@ function BlockTooltip({
     return rules;
   };
 
+  // Show tooltip even if template not found, with basic info
   if (!blockTemplate) {
-    return children;
+    // Still wrap in tooltip container to maintain hover behavior
+    return (
+      <div 
+        ref={containerRef}
+        className="relative"
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        {children}
+        {showTooltip && (
+          <div
+            ref={tooltipRef}
+            className="fixed z-[9999] w-80 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl pointer-events-none"
+            style={{
+              left: `${tooltipPosition.left}px`,
+              top: `${tooltipPosition.top}px`,
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Info size={14} className="text-purple-400" />
+                <h4 className="text-sm font-semibold text-white">{block.name}</h4>
+              </div>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                {block.verified ? '✅ Verified block' : '⚠️ Unverified block'}
+              </p>
+            </div>
+            <div className="mb-3">
+              <h5 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Parameters</h5>
+              <div className="space-y-1.5">
+                {Object.keys(block.params).length > 0 ? (
+                  Object.keys(block.params).map((key) => (
+                    <div key={key} className="text-xs">
+                      <span className="text-purple-400 font-mono">{key}</span>
+                      <span className="text-gray-400">: Required parameter</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500">No parameters required</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
     <div 
+      ref={containerRef}
       className="relative"
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
@@ -288,11 +349,13 @@ function BlockTooltip({
       {showTooltip && (
         <div
           ref={tooltipRef}
-          className="absolute z-50 w-80 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl pointer-events-none"
+          className="fixed z-[9999] w-80 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl pointer-events-none"
           style={{
-            left: 'calc(100% + 12px)',
-            top: '50%',
-            transform: 'translateY(-50%)'
+            left: `${tooltipPosition.left}px`,
+            top: `${tooltipPosition.top}px`,
+            transform: 'translateY(-50%)',
+            maxHeight: '80vh',
+            overflowY: 'auto'
           }}
         >
           {/* Context/Description */}
@@ -768,7 +831,7 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 overflow-x-visible">
             {SIMPLE_BLOCK_CATEGORIES[activeCategory].map(block => (
               <BlockTooltip key={block.id} block={block}>
                 <div 
