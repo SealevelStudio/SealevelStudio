@@ -10,7 +10,10 @@ import {
   Sparkles,
   Lightbulb,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 import { AgentMessage, AgentSuggestion } from '../lib/agents/types';
 import type { SimpleBlock } from './UnifiedTransactionBuilder';
@@ -22,6 +25,9 @@ interface TransactionAgentProps {
   onUpdateBlock?: (blockId: string, params: Record<string, string>) => void;
   errors?: string[];
   warnings?: string[];
+  availableBlocks?: SimpleBlock[];
+  onExplainBlock?: (blockId: string) => void;
+  onOptimize?: () => void;
 }
 
 export function TransactionAgent({
@@ -30,7 +36,10 @@ export function TransactionAgent({
   onAddBlock,
   onUpdateBlock,
   errors = [],
-  warnings = []
+  warnings = [],
+  availableBlocks = [],
+  onExplainBlock,
+  onOptimize
 }: TransactionAgentProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<AgentMessage[]>([
@@ -82,7 +91,69 @@ export function TransactionAgent({
         }, 2000);
       }
     }
-  }, [simpleWorkflow.length]);
+
+    // Auto-analyze when workflow changes
+    if (simpleWorkflow.length > 0 && messages.length > 1) {
+      const hasEmptyParams = simpleWorkflow.some(block => 
+        Object.values(block.params).some(val => !val || val === '')
+      );
+      
+      if (hasEmptyParams) {
+        const analysis: AgentMessage = {
+          id: `analysis-${Date.now()}`,
+          role: 'assistant',
+          content: `🔍 I noticed some blocks have empty parameters. Would you like me to help fill them in?`,
+          timestamp: new Date(),
+          suggestions: simpleWorkflow
+            .filter(block => Object.entries(block.params).some(([key, val]) => !val || val === ''))
+            .slice(0, 3)
+            .map(block => ({
+              type: 'update_param' as const,
+              title: `Fill ${block.name} parameters`,
+              description: `Help configure ${block.name}`,
+              action: () => {
+                const emptyParams = Object.entries(block.params)
+                  .filter(([_, val]) => !val || val === '')
+                  .map(([key]) => key);
+                addMessage('assistant', `To configure ${block.name}, you need to fill:\n\n${emptyParams.map(p => `• ${p}`).join('\n')}\n\nWhat values would you like to use?`);
+              },
+              data: block
+            }))
+        };
+        // Only add if not already shown recently
+        const recentAnalysis = messages.filter(m => m.id.startsWith('analysis-'));
+        if (recentAnalysis.length === 0) {
+          setTimeout(() => {
+            setMessages(prev => [...prev, analysis]);
+          }, 3000);
+        }
+      }
+    }
+
+    // Auto-detect errors
+    if (errors.length > 0) {
+      const errorMsg: AgentMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: `⚠️ I found ${errors.length} error(s) in your transaction. Let me help fix them!`,
+        timestamp: new Date(),
+        suggestions: errors.slice(0, 3).map(error => ({
+          type: 'fix_error' as const,
+          title: `Fix: ${error}`,
+          description: 'Get help with this error',
+          action: () => {
+            addMessage('assistant', `Let's fix: ${error}\n\nCommon solutions:\n• Check address format (should be base58)\n• Verify amounts are in correct units\n• Ensure all required fields are filled\n\nWhat specific help do you need?`);
+          }
+        }))
+      };
+      const recentErrors = messages.filter(m => m.id.startsWith('error-'));
+      if (recentErrors.length === 0) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, errorMsg]);
+        }, 2000);
+      }
+    }
+  }, [simpleWorkflow.length, errors.length, messages.length]);
 
   const addMessage = (role: 'user' | 'assistant', content: string, suggestions?: AgentSuggestion[]) => {
     const newMessage: AgentMessage = {
@@ -228,6 +299,46 @@ export function TransactionAgent({
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick Actions */}
+          {simpleWorkflow.length > 0 && (
+            <div className="px-4 pt-2 border-t border-gray-700">
+              <div className="flex flex-wrap gap-2 mb-2">
+                <button
+                  onClick={() => {
+                    const analysis = analyzeTransaction(simpleWorkflow);
+                    addMessage('assistant', analysis);
+                  }}
+                  className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Sparkles size={12} />
+                  Analyze
+                </button>
+                {onOptimize && (
+                  <button
+                    onClick={() => {
+                      if (onOptimize) onOptimize();
+                      addMessage('assistant', '🔍 Analyzing your transaction for optimizations...\n\nChecking:\n• Transaction size\n• Account usage\n• Compute units\n• Fee optimization\n\nI\'ll provide suggestions shortly!');
+                    }}
+                    className="px-3 py-1.5 text-xs bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 rounded-lg transition-colors flex items-center gap-1.5"
+                  >
+                    <Zap size={12} />
+                    Optimize
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    const blocks = simpleWorkflow.map((b, i) => `${i + 1}. ${b.name}${Object.values(b.params).some(v => !v) ? ' (incomplete)' : ''}`).join('\n');
+                    addMessage('assistant', `📋 Your Transaction Summary:\n\n${blocks}\n\n${simpleWorkflow.length} block(s) total\n${simpleWorkflow.filter(b => Object.values(b.params).every(v => v)).length} complete\n${simpleWorkflow.filter(b => Object.values(b.params).some(v => !v)).length} need configuration`);
+                  }}
+                  className="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <CheckCircle size={12} />
+                  Summary
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Input */}
           <div className="p-4 border-t border-gray-700">
             <div className="flex gap-2">
@@ -327,14 +438,64 @@ function generateResponse(
     };
   }
 
+  if (lowerMessage.includes('code') || lowerMessage.includes('example') || lowerMessage.includes('snippet')) {
+    return {
+      content: `Here's a code example for your transaction:\n\n\`\`\`typescript\n// Example: Building a transaction with ${workflow.length} instruction(s)\nconst transaction = new Transaction();\n\n${workflow.map((block, i) => {
+        if (block.id === 'system_transfer') {
+          return `// Instruction ${i + 1}: Transfer SOL\ntransaction.add(\n  SystemProgram.transfer({\n    fromPubkey: wallet.publicKey,\n    toPubkey: new PublicKey('${block.params.to || 'RECIPIENT_ADDRESS'}'),\n    lamports: ${block.params.amount || '0'}\n  })\n);`;
+        }
+        return `// Instruction ${i + 1}: ${block.name}\n// Add ${block.name} instruction here`;
+      }).join('\n\n')}\n\n// Sign and send\nconst signature = await sendTransaction(transaction, [wallet]);\n\`\`\`\n\nWould you like me to generate the full code for any specific block?`,
+    };
+  }
+
+  if (lowerMessage.includes('cost') || lowerMessage.includes('fee') || lowerMessage.includes('price')) {
+    const estimatedCost = workflow.length * 5000; // Rough estimate: 5000 lamports per instruction
+    return {
+      content: `💰 Estimated Transaction Cost:\n\n• Base fee: ~5,000 lamports per instruction\n• Your transaction: ${workflow.length} instruction(s)\n• Estimated total: ~${estimatedCost.toLocaleString()} lamports (~${(estimatedCost / 1_000_000_000).toFixed(9)} SOL)\n\n💡 Note: Actual fees may vary based on:\n• Network congestion\n• Compute units used\n• Account rent (if creating accounts)\n• Priority fees\n\nWant me to help optimize costs?`,
+      suggestions: [
+        {
+          type: 'optimize',
+          title: 'Optimize transaction costs',
+          description: 'Get cost-saving suggestions',
+        }
+      ]
+    };
+  }
+
+  if (lowerMessage.includes('validate') || lowerMessage.includes('check') || lowerMessage.includes('verify')) {
+    const issues: string[] = [];
+    workflow.forEach((block, i) => {
+      const emptyParams = Object.entries(block.params).filter(([_, val]) => !val || val === '');
+      if (emptyParams.length > 0) {
+        issues.push(`Block ${i + 1} (${block.name}): Missing ${emptyParams.map(([key]) => key).join(', ')}`);
+      }
+    });
+
+    if (issues.length === 0) {
+      return {
+        content: `✅ Validation Check:\n\nAll blocks appear to be configured correctly!\n\n• ${workflow.length} block(s) configured\n• All required parameters filled\n• No obvious errors detected\n\nReady to build! 🚀`,
+      };
+    }
+
+    return {
+      content: `🔍 Validation Results:\n\nFound ${issues.length} issue(s):\n\n${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}\n\nWould you like me to help fix these?`,
+      suggestions: issues.slice(0, 3).map((issue, i) => ({
+        type: 'fix_error' as const,
+        title: `Fix: ${issue.split(':')[0]}`,
+        description: issue.split(':')[1]?.trim() || 'Fix this issue',
+      }))
+    };
+  }
+
   // Default response
   return {
-    content: `I understand you're asking about "${userMessage}". Let me help you with that!\n\nYou currently have ${workflow.length} block(s) in your transaction. I can help you:\n\n• Explain what each block does\n• Add more blocks to your transaction\n• Review for errors and issues\n• Optimize the transaction\n• Answer questions about Solana\n\nWhat would you like to know?`,
+    content: `I understand you're asking about "${userMessage}". Let me help you with that!\n\nYou currently have ${workflow.length} block(s) in your transaction. I can help you:\n\n• Explain what each block does\n• Add more blocks to your transaction\n• Review for errors and issues\n• Optimize the transaction\n• Generate code examples\n• Estimate costs\n• Validate the transaction\n• Answer questions about Solana\n\nWhat would you like to know?`,
     suggestions: workflow.length > 0 ? [
       {
         type: 'explain',
         title: 'Explain current blocks',
-        description: 'Get detailed explanations of your blocks',
+        description: 'Get detailed explanations',
       },
       {
         type: 'optimize',
@@ -349,5 +510,44 @@ function generateResponse(
       }
     ]
   };
+}
+
+// Transaction analysis function
+function analyzeTransaction(workflow: SimpleBlock[]): string {
+  const analysis: string[] = [];
+  
+  analysis.push(`📊 Transaction Analysis:\n`);
+  analysis.push(`• Total blocks: ${workflow.length}`);
+  
+  const blockTypes = workflow.reduce((acc, block) => {
+    acc[block.name] = (acc[block.name] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  analysis.push(`• Block types: ${Object.keys(blockTypes).join(', ')}`);
+  
+  const completeBlocks = workflow.filter(b => Object.values(b.params).every(v => v && v !== ''));
+  const incompleteBlocks = workflow.filter(b => Object.values(b.params).some(v => !v || v === ''));
+  
+  analysis.push(`• Complete: ${completeBlocks.length}`);
+  analysis.push(`• Need configuration: ${incompleteBlocks.length}`);
+  
+  // Check for common patterns
+  const hasTransfer = workflow.some(b => b.id === 'system_transfer' || b.id === 'token_transfer');
+  const hasSwap = workflow.some(b => b.id === 'jup_swap');
+  const hasATA = workflow.some(b => b.id === 'ata_create');
+  
+  analysis.push(`\n💡 Observations:`);
+  if (hasATA && hasTransfer) {
+    analysis.push(`• Good flow: Creating ATA before transferring tokens`);
+  }
+  if (hasSwap && !hasATA) {
+    analysis.push(`• Consider: You might need to create token accounts before swapping`);
+  }
+  if (workflow.length > 5) {
+    analysis.push(`• Large transaction: Consider splitting into multiple transactions if possible`);
+  }
+  
+  return analysis.join('\n');
 }
 

@@ -1294,6 +1294,21 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         } : undefined}
         errors={buildError ? [buildError] : []}
         warnings={[]}
+        availableBlocks={viewMode === 'simple' ? Object.values(SIMPLE_BLOCK_CATEGORIES).flat() : []}
+        onExplainBlock={(blockId) => {
+          const block = simpleWorkflow.find(b => b.instanceId === blockId);
+          if (block) {
+            const templateId = BLOCK_TO_TEMPLATE[block.id];
+            const template = templateId ? getTemplateById(templateId) : null;
+            if (template) {
+              addLog(`Block: ${block.name}\n${template.description}\nAccounts: ${template.accounts.length}\nArgs: ${template.args.length}`, 'info');
+            }
+          }
+        }}
+        onOptimize={() => {
+          addLog('Analyzing transaction for optimizations...', 'info');
+          // Add optimization logic here
+        }}
       />
     </div>
   );
