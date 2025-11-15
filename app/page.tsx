@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getMint } from '@solana/spl-token';
-import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal } from 'lucide-react';
+import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WalletButton from './components/WalletButton';
 import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilder';
 import { TransactionPreview } from './components/TransactionPreview';
 import { ClientOnly } from './components/ClientOnly';
+import { ArbitrageScanner } from './components/ArbitrageScanner';
 import { useNetwork } from './contexts/NetworkContext';
 import { useTutorial } from './contexts/TutorialContext';
 import { TutorialFlow } from './components/TutorialFlow';
@@ -644,6 +645,7 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
   const navItems = [
     { id: 'inspector', label: 'Account Inspector', icon: <Search className="h-4 w-4" /> },
     { id: 'builder', label: 'Transaction Builder', icon: <Wrench className="h-4 w-4" /> },
+    { id: 'scanner', label: 'Arbitrage Scanner', icon: <TrendingUp className="h-4 w-4" /> },
     { id: 'simulation', label: 'Simulation', icon: <Play className="h-4 w-4" /> },
     { id: 'exporter', label: 'Code Exporter', icon: <Code className="h-4 w-4" /> },
   ];
@@ -696,9 +698,21 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
     setTransactionPreview(null);
   };
 
+  const handleArbitrageBuild = (opportunity: any) => {
+    // Switch to builder view and pass opportunity
+    setActiveView('builder');
+    // The opportunity will be handled by the builder
+    console.log('Building transaction for opportunity:', opportunity);
+  };
+
   // Transaction Builder has its own full-screen layout
   if (activeView === 'builder') {
     return <UnifiedTransactionBuilder onTransactionBuilt={handleTransactionBuilt} onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Scanner has its own full-screen layout
+  if (activeView === 'scanner') {
+    return <ArbitrageScanner onBuildTransaction={handleArbitrageBuild} />;
   }
 
   // Default single-column layout for other views
@@ -812,12 +826,12 @@ export default function App() {
   }
 
   // Main app interface
-  const isBuilderView = activeView === 'builder';
+  const isFullScreenView = activeView === 'builder' || activeView === 'scanner';
   
   return (
     <ClientOnly>
       <div className="h-screen flex flex-col bg-gray-900">
-        {!isBuilderView && (
+        {!isFullScreenView && (
           <Header 
             network={network} 
             setNetwork={setNetwork} 
@@ -828,7 +842,7 @@ export default function App() {
         )}
         
         <div className="flex-1 flex overflow-hidden">
-          {!isBuilderView && (
+          {!isFullScreenView && (
             <Sidebar activeView={activeView} setActiveView={setActiveView} />
           )}
           <MainContent 

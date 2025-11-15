@@ -27,7 +27,8 @@ import {
   ArrowLeft,
   Clipboard,
   ClipboardCheck,
-  Info
+  Info,
+  TrendingUp
 } from 'lucide-react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { TransactionBuilder } from '../lib/transaction-builder';
@@ -35,6 +36,8 @@ import { getTemplateById, getTemplatesByCategory } from '../lib/instructions/tem
 import { BuiltInstruction, TransactionDraft, InstructionTemplate } from '../lib/instructions/types';
 import { PublicKey } from '@solana/web3.js';
 import { TransactionAgent } from './TransactionAgent';
+import { ArbitragePanel } from './ArbitragePanel';
+import { ArbitrageOpportunity } from '../lib/pools/types';
 
 // --- Block to Instruction Template Mapping ---
 const BLOCK_TO_TEMPLATE: Record<string, string> = {
@@ -513,6 +516,9 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
   const [copiedAddresses, setCopiedAddresses] = useState<string[]>([]);
   const [showClipboard, setShowClipboard] = useState(false);
   const [justCopied, setJustCopied] = useState<string | null>(null);
+
+  // Arbitrage panel state
+  const [showArbitragePanel, setShowArbitragePanel] = useState(false);
 
   const categories = [
     { id: 'system', name: 'System', icon: '🏠' },
@@ -1485,6 +1491,18 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowArbitragePanel(!showArbitragePanel)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              showArbitragePanel
+                ? 'bg-teal-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+            title="Toggle Arbitrage Panel"
+          >
+            <TrendingUp size={16} />
+            Arbitrage
+          </button>
           {publicKey ? (
             <button
               onClick={() => copyAddress(publicKey.toString())}
@@ -1594,8 +1612,36 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden">
-        {viewMode === 'simple' ? renderSimpleMode() : renderAdvancedMode()}
+      <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'simple' ? renderSimpleMode() : renderAdvancedMode()}
+        </div>
+        {showArbitragePanel && (
+          <ArbitragePanel
+            onSelectOpportunity={(opportunity: ArbitrageOpportunity) => {
+              // Add swap blocks for each step in the arbitrage path
+              if (viewMode === 'simple') {
+                opportunity.steps.forEach((step, index) => {
+                  // Find or create swap block
+                  const swapBlock = SIMPLE_BLOCK_CATEGORIES.DEFI.find(b => b.id === 'jup_swap');
+                  if (swapBlock) {
+                    const block = {
+                      ...swapBlock,
+                      instanceId: `arb-${opportunity.id}-${index}-${Date.now()}`,
+                      params: {
+                        amount: step.amountIn.toString(),
+                        minAmountOut: (step.amountOut * BigInt(95) / BigInt(100)).toString(), // 5% slippage
+                      }
+                    };
+                    addSimpleBlock(block);
+                  }
+                });
+                addLog(`Added ${opportunity.steps.length} swap blocks from arbitrage opportunity`, 'success');
+              }
+            }}
+            onClose={() => setShowArbitragePanel(false)}
+          />
+        )}
       </div>
 
       {/* AI Agent */}
