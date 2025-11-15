@@ -41,6 +41,7 @@ const BLOCK_TO_TEMPLATE: Record<string, string> = {
   'jup_swap': 'jupiter_swap',
   'system_transfer': 'system_transfer',
   'token_transfer': 'spl_token_transfer',
+  'create_token_and_mint': 'spl_token_create_mint', // Custom combined operation
   'token_mint': 'spl_token_mint_to',
   'token_burn': 'spl_token_burn',
   'ata_create': 'spl_ata_create',
@@ -64,7 +65,46 @@ const SIMPLE_BLOCK_CATEGORIES: Record<string, SimpleBlock[]> = {
     { id: 'token_transfer', name: 'Transfer Token', icon: 'TrendingUp', color: 'bg-blue-500', verified: true, params: { destination: '', amount: '1000000' } },
   ],
   TOKEN: [
-    { id: 'token_mint', name: 'Mint Tokens', icon: 'Zap', color: 'bg-purple-500', verified: true, params: { destination: '', amount: '1000000' } },
+    { id: 'create_token_and_mint', name: 'Create Token + Mint', icon: 'Zap', color: 'bg-purple-600', verified: true, params: { 
+      // Core SPL Mint Attributes
+      decimals: '9', 
+      initialSupply: '1.00', 
+      mintAuthority: '', 
+      freezeAuthority: '', 
+      enableFreeze: 'false',
+      revokeMintAuthority: 'false',
+      
+      // Token Account Attributes
+      tokenAccountOwner: '',
+      delegate: '',
+      delegatedAmount: '0',
+      freezeInitialAccount: 'false',
+      isNative: 'false',
+      
+      // Metaplex Metadata
+      tokenName: '',
+      tokenSymbol: '',
+      metadataURI: '',
+      sellerFeeBasisPoints: '500',
+      creators: '',
+      primarySaleHappened: 'false',
+      isMutable: 'true',
+      
+      // Token-2022 Extensions
+      useToken2022: 'false',
+      transferFee: '0',
+      enableTax: 'false',
+      transferHookProgram: '',
+      enableConfidentialTransfers: 'false',
+      enableInterestBearing: 'false',
+      interestRate: '0',
+      enableNonTransferable: 'false',
+      enableTransferMemo: 'false',
+      enableImmutableOwner: 'false',
+      metadataPointer: '',
+      supplyCap: ''
+    } },
+    { id: 'token_mint', name: 'Mint Tokens', icon: 'Zap', color: 'bg-purple-500', verified: true, params: { mint: '', destination: '', amount: '1000000' } },
     { id: 'token_burn', name: 'Burn Tokens', icon: 'Zap', color: 'bg-red-500', verified: true, params: { amount: '1000000' } },
     { id: 'ata_create', name: 'Create ATA', icon: 'Layers', color: 'bg-indigo-500', verified: true, params: { wallet: '', mint: '' } },
   ],
@@ -584,16 +624,131 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       const accounts: Record<string, string> = {};
       const args: Record<string, any> = {};
 
+      // Auto-convert SOL to lamports helper
+      const convertSolToLamports = (value: string): bigint => {
+        if (!value) return BigInt(0);
+        // Check if it's a decimal (SOL format)
+        if (value.includes('.')) {
+          const sol = parseFloat(value);
+          return BigInt(Math.floor(sol * 1_000_000_000));
+        }
+        // Already in lamports
+        return BigInt(value || '0');
+      };
+
       if (block.id === 'system_transfer') {
         if (!publicKey) throw new Error('Wallet not connected');
         accounts['from'] = publicKey.toString();
         accounts['to'] = block.params.to || '';
-        args['amount'] = BigInt(block.params.amount || '0');
+        args['amount'] = convertSolToLamports(block.params.amount || '0');
       } else if (block.id === 'token_transfer') {
         if (!publicKey) throw new Error('Wallet not connected');
         accounts['authority'] = publicKey.toString();
         accounts['source'] = '';
         accounts['destination'] = block.params.destination || '';
+        args['amount'] = BigInt(block.params.amount || '0');
+      } else if (block.id === 'create_token_and_mint') {
+        // Combined operation: Create mint + Create token account + Mint tokens with ALL features
+        if (!publicKey) throw new Error('Wallet not connected');
+        
+        // Core SPL Mint Attributes
+        const decimals = parseInt(block.params.decimals || '9');
+        const initialSupply = convertSolToLamports(block.params.initialSupply || '0');
+        const mintAuthority = block.params.mintAuthority || publicKey.toString();
+        const freezeAuthority = block.params.freezeAuthority || (block.params.enableFreeze === 'true' ? publicKey.toString() : '');
+        const enableFreeze = block.params.enableFreeze === 'true';
+        const revokeMintAuthority = block.params.revokeMintAuthority === 'true';
+        
+        // Token Account Attributes
+        const tokenAccountOwner = block.params.tokenAccountOwner || publicKey.toString();
+        const delegate = block.params.delegate || '';
+        const delegatedAmount = BigInt(block.params.delegatedAmount || '0');
+        const freezeInitialAccount = block.params.freezeInitialAccount === 'true';
+        const isNative = block.params.isNative === 'true';
+        
+        // Metaplex Metadata
+        const tokenName = block.params.tokenName || '';
+        const tokenSymbol = block.params.tokenSymbol || '';
+        const metadataURI = block.params.metadataURI || '';
+        const sellerFeeBasisPoints = parseInt(block.params.sellerFeeBasisPoints || '500');
+        const creators = block.params.creators || '';
+        const primarySaleHappened = block.params.primarySaleHappened === 'true';
+        const isMutable = block.params.isMutable !== 'false'; // Default to true
+        
+        // Token-2022 Extensions
+        const useToken2022 = block.params.useToken2022 === 'true';
+        const transferFee = parseInt(block.params.transferFee || '0');
+        const enableTax = block.params.enableTax === 'true';
+        const transferHookProgram = block.params.transferHookProgram || '';
+        const enableConfidentialTransfers = block.params.enableConfidentialTransfers === 'true';
+        const enableInterestBearing = block.params.enableInterestBearing === 'true';
+        const interestRate = parseInt(block.params.interestRate || '0');
+        const enableNonTransferable = block.params.enableNonTransferable === 'true';
+        const enableTransferMemo = block.params.enableTransferMemo === 'true';
+        const enableImmutableOwner = block.params.enableImmutableOwner === 'true';
+        const metadataPointer = block.params.metadataPointer || '';
+        const supplyCap = block.params.supplyCap ? BigInt(block.params.supplyCap) : BigInt(0);
+        
+        // Store special params for multi-instruction handling
+        args['_operation'] = 'create_token_and_mint';
+        
+        // Core SPL Mint
+        args['decimals'] = decimals;
+        args['initialSupply'] = initialSupply;
+        args['mintAuthority'] = mintAuthority;
+        args['freezeAuthority'] = enableFreeze ? freezeAuthority : null;
+        args['revokeMintAuthority'] = revokeMintAuthority;
+        
+        // Token Account
+        args['delegate'] = delegate;
+        args['delegatedAmount'] = delegatedAmount;
+        args['freezeInitialAccount'] = freezeInitialAccount;
+        args['isNative'] = isNative;
+        
+        // Metaplex Metadata
+        args['tokenName'] = tokenName;
+        args['tokenSymbol'] = tokenSymbol;
+        args['metadataURI'] = metadataURI;
+        args['sellerFeeBasisPoints'] = sellerFeeBasisPoints;
+        args['creators'] = creators;
+        args['primarySaleHappened'] = primarySaleHappened;
+        args['isMutable'] = isMutable;
+        
+        // Token-2022 Extensions
+        args['useToken2022'] = useToken2022;
+        args['transferFee'] = enableTax ? transferFee : 0;
+        args['enableTax'] = enableTax;
+        args['transferHookProgram'] = transferHookProgram;
+        args['enableConfidentialTransfers'] = enableConfidentialTransfers;
+        args['enableInterestBearing'] = enableInterestBearing;
+        args['interestRate'] = interestRate;
+        args['enableNonTransferable'] = enableNonTransferable;
+        args['enableTransferMemo'] = enableTransferMemo;
+        args['enableImmutableOwner'] = enableImmutableOwner;
+        args['metadataPointer'] = metadataPointer;
+        args['supplyCap'] = supplyCap;
+        
+        accounts['payer'] = publicKey.toString();
+        accounts['tokenAccountOwner'] = tokenAccountOwner;
+        if (freezeAuthority) {
+          accounts['freezeAuthority'] = freezeAuthority;
+        }
+        if (delegate) {
+          accounts['delegate'] = delegate;
+        }
+        if (transferHookProgram) {
+          accounts['transferHookProgram'] = transferHookProgram;
+        }
+        
+        // Use a placeholder template for now - will be expanded in transaction builder
+        const placeholderTemplate = getTemplateById('spl_token_create_mint') || template;
+        instructions.push({ template: placeholderTemplate, accounts, args });
+        continue; // Skip normal processing
+      } else if (block.id === 'token_mint') {
+        if (!publicKey) throw new Error('Wallet not connected');
+        accounts['mint'] = block.params.mint || '';
+        accounts['destination'] = block.params.destination || '';
+        accounts['authority'] = publicKey.toString();
         args['amount'] = BigInt(block.params.amount || '0');
       } else if (block.id === 'jup_swap') {
         if (!publicKey) throw new Error('Wallet not connected');
@@ -768,6 +923,19 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
     addLog('Sending transaction to network...', 'info');
 
     try {
+      // Check for additional signers (like mint keypairs from create_token_and_mint)
+      const additionalSigners = (builtTransaction as any)._additionalSigners || [];
+      
+      // If there are additional signers, we need to sign with them
+      // For R&D: This allows executing transactions with program-derived keypairs
+      if (additionalSigners.length > 0) {
+        addLog(`Found ${additionalSigners.length} additional signer(s) (e.g., mint keypair)`, 'info');
+        // Sign transaction with additional signers
+        additionalSigners.forEach((signer: any) => {
+          builtTransaction.partialSign(signer);
+        });
+      }
+      
       const signature = await sendTransaction(builtTransaction, connection);
       addLog(`Transaction sent! Signature: ${signature}`, 'success');
       addLog(`View on Solscan: https://solscan.io/tx/${signature}`, 'info');
@@ -775,6 +943,13 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       addLog('Waiting for confirmation...', 'info');
       await connection.confirmTransaction(signature, 'confirmed');
       addLog('Transaction confirmed!', 'success');
+      
+      // Log mint address if created
+      if (additionalSigners.length > 0) {
+        const mintPubkey = additionalSigners[0].publicKey.toString();
+        addLog(`Created mint address: ${mintPubkey}`, 'success');
+        addLog(`Mint keypair secret key (for R&D): [REDACTED - stored in transaction]`, 'info');
+      }
       
       setBuiltTransaction(null);
       setTransactionCost(null);
@@ -1001,13 +1176,13 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
 
         {/* Right Sidebar: Block Config */}
         {selectedBlock ? (
-          <aside className="w-72 border-l border-slate-800 bg-slate-900 p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
+          <aside className="w-72 border-l border-slate-800 bg-slate-900 flex flex-col">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
               <h2 className="font-bold text-slate-200">Block Config</h2>
               <button onClick={() => setSelectedBlock(null)} className="text-slate-500 hover:text-white"><X size={16} /></button>
             </div>
 
-            <div className="space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
                 <div className={`w-10 h-10 rounded flex items-center justify-center text-white shadow-sm ${selectedBlock.color}`}>
                   {renderIcon(selectedBlock.icon, "w-5 h-5")}
@@ -1020,19 +1195,98 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
 
               <div className="space-y-4">
                 {Object.entries(selectedBlock.params).map(([key, value]) => {
-                  const isAddressField = ['to', 'destination', 'wallet', 'mint'].includes(key);
+                  const isAddressField = ['to', 'destination', 'wallet', 'mint', 'mintAuthority', 'freezeAuthority', 'tokenAccountOwner', 'delegate', 'transferHookProgram', 'metadataPointer', 'updateAuthority'].includes(key);
+                  const isAmountField = ['amount', 'initialSupply', 'supplyCap', 'delegatedAmount'].includes(key);
+                  const isBooleanField = ['enableFreeze', 'enableTax', 'revokeMintAuthority', 'freezeInitialAccount', 'isNative', 'primarySaleHappened', 'isMutable', 'useToken2022', 'enableConfidentialTransfers', 'enableInterestBearing', 'enableNonTransferable', 'enableTransferMemo', 'enableImmutableOwner'].includes(key);
+                  const isPercentageField = ['transferFee', 'sellerFeeBasisPoints', 'interestRate'].includes(key);
+                  const isStringField = ['tokenName', 'tokenSymbol', 'metadataURI', 'creators'].includes(key);
+                  
+                  // Auto-convert SOL to lamports (hidden from user)
+                  const convertSolToLamports = (solValue: string): string => {
+                    if (!solValue || isNaN(parseFloat(solValue))) return solValue;
+                    const sol = parseFloat(solValue);
+                    const lamports = Math.floor(sol * 1_000_000_000);
+                    return lamports.toString();
+                  };
+                  
                   return (
                     <div key={key} className="space-y-1">
-                      <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">{key}</label>
+                      <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">
+                        {key}
+                        {isAmountField && key === 'amount' && (
+                          <span className="text-slate-600 ml-1">(in lamports)</span>
+                        )}
+                        {isAmountField && key === 'initialSupply' && (
+                          <span className="text-slate-600 ml-1">(in SOL)</span>
+                        )}
+                        {isAmountField && key === 'supplyCap' && (
+                          <span className="text-slate-600 ml-1">(0 = unlimited)</span>
+                        )}
+                        {isPercentageField && (
+                          <span className="text-slate-600 ml-1">(basis points: 100 = 1%)</span>
+                        )}
+                        {isBooleanField && (
+                          <span className="text-slate-600 ml-1">(true/false)</span>
+                        )}
+                        {isStringField && key === 'creators' && (
+                          <span className="text-slate-600 ml-1">(comma-separated: "addr1:50,addr2:50")</span>
+                        )}
+                        {isStringField && key === 'metadataURI' && (
+                          <span className="text-slate-600 ml-1">(JSON metadata URL)</span>
+                        )}
+                      </label>
                       <div className="relative">
-                        <input 
-                          type="text" 
-                          value={value} 
-                          onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 pr-10 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
-                          placeholder={isAddressField ? "Enter address..." : ""}
-                        />
-                        {isAddressField && value && (
+                        {isBooleanField ? (
+                          <select
+                            value={value}
+                            onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
+                          >
+                            <option value="false">False (Disabled)</option>
+                            <option value="true">True (Enabled)</option>
+                          </select>
+                        ) : isStringField && key === 'creators' ? (
+                          <textarea
+                            value={value}
+                            onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 pr-10 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors min-h-[60px]"
+                            placeholder="addr1:50,addr2:50 (address:share pairs)"
+                          />
+                        ) : (
+                          <input 
+                            type="text" 
+                            value={value} 
+                            onChange={(e) => {
+                              let newValue = e.target.value;
+                              // Auto-convert SOL to lamports for amount fields (hidden conversion)
+                              if (isAmountField && key === 'amount' && newValue.includes('.')) {
+                                // User entered SOL, convert to lamports behind the scenes
+                                newValue = convertSolToLamports(newValue);
+                              }
+                              if (isAmountField && key === 'initialSupply' && newValue.includes('.')) {
+                                // User entered SOL, convert to lamports behind the scenes
+                                newValue = convertSolToLamports(newValue);
+                              }
+                              updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: newValue });
+                            }}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 pr-10 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
+                            placeholder={
+                              isAddressField ? "Enter address..." : 
+                              isAmountField && key === 'initialSupply' ? "e.g., 1.00 (SOL)" :
+                              isAmountField && key === 'supplyCap' ? "e.g., 1000000000 (0 = unlimited)" :
+                              isAmountField && key === 'delegatedAmount' ? "e.g., 1000000 (lamports)" :
+                              isAmountField ? "e.g., 1000000000 (lamports)" :
+                              isPercentageField && key === 'transferFee' ? "e.g., 100 (1%) or 500 (5%)" :
+                              isPercentageField && key === 'sellerFeeBasisPoints' ? "e.g., 500 (5%) or 1000 (10%)" :
+                              isPercentageField && key === 'interestRate' ? "e.g., 500 (5% APY) or -200 (-2% APY)" :
+                              isStringField && key === 'tokenName' ? "e.g., Solana Ipsum Token" :
+                              isStringField && key === 'tokenSymbol' ? "e.g., SIT" :
+                              isStringField && key === 'metadataURI' ? "https://example.com/metadata.json" :
+                              ""
+                            }
+                          />
+                        )}
+                        {!isBooleanField && isAddressField && value && (
                           <button
                             onClick={() => copyAddress(value)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-400 hover:bg-slate-800 rounded transition-colors"
@@ -1045,7 +1299,7 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
                             )}
                           </button>
                         )}
-                        {isAddressField && copiedAddresses.length > 0 && (
+                        {!isBooleanField && isAddressField && copiedAddresses.length > 0 && (
                           <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                             {copiedAddresses.slice(0, 5).map((addr, idx) => (
                               <button

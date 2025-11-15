@@ -115,6 +115,30 @@ export const INSTRUCTION_TEMPLATES: InstructionTemplate[] = [
     }]
   },
 
+  {
+    id: 'spl_token_create_mint',
+    programId: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+    name: 'Create Token + Mint',
+    description: 'Create a new SPL token mint with ALL features: Core SPL attributes, Token Account options, Metaplex Metadata, and Token-2022 Extensions (comprehensive R&D tool)',
+    category: 'token',
+    accounts: [
+      { name: 'payer', type: 'signer', description: 'Account paying for creation' },
+      { name: 'mint', type: 'writable', description: 'Mint account to create' },
+      { name: 'mintAuthority', type: 'signer', description: 'Mint authority (can be null for immutable)' },
+      { name: 'freezeAuthority', type: 'readonly', description: 'Freeze authority (null = no freeze capability)', isOptional: true },
+      { name: 'tokenAccount', type: 'writable', description: 'Token account to create and mint to' },
+      { name: 'tokenAccountOwner', type: 'readonly', description: 'Owner of token account' }
+    ],
+    args: [
+      { name: 'decimals', type: 'u8', description: 'Number of decimals (0-9)', validation: { min: 0, max: 9 } },
+      { name: 'initialSupply', type: 'u64', description: 'Initial supply to mint (in lamports)' },
+      { name: 'transferFee', type: 'u16', description: 'Transfer fee in basis points (0-10000, 100 = 1%)', isOptional: true },
+      { name: 'enableFreeze', type: 'bool', description: 'Enable freeze authority (can freeze token accounts)', isOptional: true },
+      { name: 'enableTax', type: 'bool', description: 'Enable transfer tax/fee', isOptional: true },
+      { name: 'supplyCap', type: 'u64', description: 'Maximum supply cap (0 = unlimited)', isOptional: true }
+    ]
+  },
+
   // ===== ASSOCIATED TOKEN PROGRAM =====
   {
     id: 'spl_ata_create',
