@@ -23,7 +23,10 @@ import {
   AlertCircle,
   CheckCircle,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  ArrowLeft,
+  Clipboard,
+  ClipboardCheck
 } from 'lucide-react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { TransactionBuilder } from '../lib/transaction-builder';
@@ -41,8 +44,18 @@ const BLOCK_TO_TEMPLATE: Record<string, string> = {
   'ata_create': 'spl_ata_create',
 };
 
+interface SimpleBlock {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  verified: boolean;
+  params: Record<string, string>;
+  instanceId?: string;
+}
+
 // --- Simple Mode Block Categories ---
-const SIMPLE_BLOCK_CATEGORIES = {
+const SIMPLE_BLOCK_CATEGORIES: Record<string, SimpleBlock[]> = {
   DEFI: [
     { id: 'jup_swap', name: 'Jupiter Swap', icon: 'Zap', color: 'bg-orange-500', verified: true, params: { amount: '100000000', minAmountOut: '0' } },
     { id: 'system_transfer', name: 'Transfer SOL', icon: 'Layers', color: 'bg-green-600', verified: true, params: { to: '', amount: '1000000000' } },
@@ -63,16 +76,6 @@ const SIMPLE_BLOCK_CATEGORIES = {
   ]
 };
 
-interface SimpleBlock {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  verified: boolean;
-  params: Record<string, string>;
-  instanceId?: string;
-}
-
 interface Log {
   timestamp: string;
   msg: string;
@@ -83,9 +86,10 @@ type ViewMode = 'simple' | 'advanced';
 
 interface UnifiedTransactionBuilderProps {
   onTransactionBuilt?: (transaction: any, cost: any) => void;
+  onBack?: () => void;
 }
 
-export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransactionBuilderProps) {
+export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: UnifiedTransactionBuilderProps) {
   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const [viewMode, setViewMode] = useState<ViewMode>('simple');
@@ -111,6 +115,11 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransac
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('system');
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  
+  // Clipboard state
+  const [copiedAddresses, setCopiedAddresses] = useState<string[]>([]);
+  const [showClipboard, setShowClipboard] = useState(false);
+  const [justCopied, setJustCopied] = useState<string | null>(null);
 
   const categories = [
     { id: 'system', name: 'System', icon: '🏠' },
@@ -125,9 +134,57 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransac
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
+  // Load clipboard from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('sealevel-clipboard');
+    if (saved) {
+      try {
+        setCopiedAddresses(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load clipboard:', e);
+      }
+    }
+  }, []);
+
+  // Close clipboard when clicking outside
+  useEffect(() => {
+    if (!showClipboard) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-clipboard-panel]') && !target.closest('[data-clipboard-button]')) {
+        setShowClipboard(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showClipboard]);
+
   const addLog = (msg: string, type: Log['type'] = 'info') => {
     const timestamp = new Date().toLocaleTimeString([], { hour12: false });
     setLogs(prev => [...prev, { timestamp, msg, type }]);
+  };
+
+  // Copy address to clipboard
+  const copyAddress = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setJustCopied(address);
+      setTimeout(() => setJustCopied(null), 2000);
+      
+      // Add to recent addresses if not already there
+      setCopiedAddresses(prev => {
+        const filtered = prev.filter(addr => addr !== address);
+        const updated = [address, ...filtered].slice(0, 10); // Keep last 10
+        localStorage.setItem('sealevel-clipboard', JSON.stringify(updated));
+        return updated;
+      });
+      
+      addLog(`Copied address: ${address.slice(0, 8)}...${address.slice(-8)}`, 'success');
+    } catch (err) {
+      addLog('Failed to copy address', 'error');
+    }
   };
 
   // ===== SIMPLE MODE FUNCTIONS =====
@@ -436,7 +493,9 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransac
                     <span className="text-sm font-medium">{block.name}</span>
                   </div>
                   {block.verified && (
-                    <ShieldCheck size={14} className="text-teal-500" title="VeriSoL Audited" />
+                    <span title="VeriSoL Audited">
+                      <ShieldCheck size={14} className="text-teal-500" />
+                    </span>
                   )}
                 </div>
               </div>
@@ -604,17 +663,53 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransac
               </div>
 
               <div className="space-y-4">
-                {Object.entries(selectedBlock.params).map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">{key}</label>
-                    <input 
-                      type="text" 
-                      value={value} 
-                      onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
-                    />
-                  </div>
-                ))}
+                {Object.entries(selectedBlock.params).map(([key, value]) => {
+                  const isAddressField = ['to', 'destination', 'wallet', 'mint'].includes(key);
+                  return (
+                    <div key={key} className="space-y-1">
+                      <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">{key}</label>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          value={value} 
+                          onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 pr-10 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
+                          placeholder={isAddressField ? "Enter address..." : ""}
+                        />
+                        {isAddressField && value && (
+                          <button
+                            onClick={() => copyAddress(value)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-400 hover:bg-slate-800 rounded transition-colors"
+                            title="Copy address"
+                          >
+                            {justCopied === value ? (
+                              <ClipboardCheck size={14} className="text-green-400" />
+                            ) : (
+                              <Clipboard size={14} />
+                            )}
+                          </button>
+                        )}
+                        {isAddressField && copiedAddresses.length > 0 && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                            {copiedAddresses.slice(0, 5).map((addr, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: addr });
+                                  copyAddress(addr);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
+                              >
+                                <div className="font-mono text-slate-300 truncate">{addr}</div>
+                                <div className="text-slate-500 text-[10px] mt-0.5">{addr.slice(0, 8)}...{addr.slice(-8)}</div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </aside>
@@ -718,6 +813,9 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransac
               onUpdateArg={(argName, value) => updateAdvancedInstructionArg(index, argName, value)}
               onRemove={() => removeAdvancedInstruction(index)}
               validationErrors={validateAdvancedInstruction(instruction)}
+              onCopyAddress={copyAddress}
+              copiedAddresses={copiedAddresses}
+              justCopied={justCopied}
             />
           ))}
         </div>
@@ -741,6 +839,15 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransac
       {/* Mode Toggle Header */}
       <div className="border-b border-gray-700 bg-gray-800/50 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
           <h1 className="text-xl font-bold text-white">Transaction Builder</h1>
           <div className="flex items-center gap-2 bg-gray-900 rounded-lg p-1">
             <button
@@ -770,16 +877,112 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt }: UnifiedTransac
 
         <div className="flex items-center gap-3">
           {publicKey ? (
-            <span className="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400 border border-green-700/50">
-              {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}
-            </span>
+            <button
+              onClick={() => copyAddress(publicKey.toString())}
+              className="flex items-center gap-2 text-xs px-3 py-1.5 rounded bg-green-900/30 text-green-400 border border-green-700/50 hover:bg-green-900/50 hover:border-green-600 transition-colors cursor-pointer group"
+              title="Click to copy wallet address"
+            >
+              {justCopied === publicKey.toString() ? (
+                <>
+                  <ClipboardCheck size={14} />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Clipboard size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span>{publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}</span>
+                </>
+              )}
+            </button>
           ) : (
             <span className="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400 border border-red-700/50">
               Wallet Not Connected
             </span>
           )}
+          <button
+            onClick={() => setShowClipboard(!showClipboard)}
+            className="relative flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-colors"
+            title="Recent addresses"
+            data-clipboard-button
+          >
+            <Clipboard size={16} />
+            {copiedAddresses.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {copiedAddresses.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Clipboard Dropdown */}
+      {showClipboard && (
+        <div className="absolute top-16 right-6 z-50 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-xl" data-clipboard-panel>
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white">Recent Addresses</h3>
+            <button
+              onClick={() => setShowClipboard(false)}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {copiedAddresses.length === 0 ? (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                <Clipboard size={32} className="mx-auto mb-2 opacity-50" />
+                <p>No addresses copied yet</p>
+                <p className="text-xs mt-1">Copy an address to see it here</p>
+              </div>
+            ) : (
+              <div className="p-2">
+                {copiedAddresses.map((address, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      copyAddress(address);
+                      setShowClipboard(false);
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-700 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-600/20 flex items-center justify-center text-purple-400 text-xs font-mono">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-mono text-gray-300 truncate">
+                          {address}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {address.slice(0, 8)}...{address.slice(-8)}
+                        </p>
+                      </div>
+                    </div>
+                    {justCopied === address ? (
+                      <ClipboardCheck size={16} className="text-green-400 flex-shrink-0" />
+                    ) : (
+                      <Clipboard size={16} className="text-gray-500 group-hover:text-gray-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {copiedAddresses.length > 0 && (
+            <div className="p-3 border-t border-gray-700">
+              <button
+                onClick={() => {
+                  setCopiedAddresses([]);
+                  localStorage.removeItem('sealevel-clipboard');
+                }}
+                className="w-full text-xs text-gray-400 hover:text-red-400 transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Content Area */}
       <div className="flex-1 overflow-hidden">
@@ -796,7 +999,10 @@ function AdvancedInstructionCard({
   onUpdateAccount, 
   onUpdateArg, 
   onRemove,
-  validationErrors 
+  validationErrors,
+  onCopyAddress,
+  copiedAddresses,
+  justCopied
 }: {
   instruction: BuiltInstruction;
   index: number;
@@ -804,6 +1010,9 @@ function AdvancedInstructionCard({
   onUpdateArg: (name: string, value: any) => void;
   onRemove: () => void;
   validationErrors: string[];
+  onCopyAddress: (address: string) => void;
+  copiedAddresses: string[];
+  justCopied: string | null;
 }) {
   const [expanded, setExpanded] = useState(true);
 
@@ -859,26 +1068,62 @@ function AdvancedInstructionCard({
           <div>
             <h4 className="font-medium text-gray-300 mb-3">Accounts</h4>
             <div className="space-y-3">
-              {instruction.template.accounts.map(account => (
-                <div key={account.name} className="flex items-center space-x-3">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      {account.name}
-                      {account.type === 'signer' && <span className="text-yellow-400 ml-1">(Signer)</span>}
-                      {account.type === 'writable' && <span className="text-blue-400 ml-1">(Writable)</span>}
-                      {account.isOptional && <span className="text-gray-500 ml-1">(Optional)</span>}
-                    </label>
-                    <input
-                      type="text"
-                      value={instruction.accounts[account.name] || ''}
-                      onChange={(e) => onUpdateAccount(account.name, e.target.value)}
-                      placeholder={account.description}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">{account.description}</p>
+              {instruction.template.accounts.map(account => {
+                const accountValue = instruction.accounts[account.name] || '';
+                const isAddress = accountValue.length > 20; // Simple heuristic for Solana addresses
+                return (
+                  <div key={account.name} className="flex items-center space-x-3">
+                    <div className="flex-1 relative">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        {account.name}
+                        {account.type === 'signer' && <span className="text-yellow-400 ml-1">(Signer)</span>}
+                        {account.type === 'writable' && <span className="text-blue-400 ml-1">(Writable)</span>}
+                        {account.isOptional && <span className="text-gray-500 ml-1">(Optional)</span>}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={accountValue}
+                          onChange={(e) => onUpdateAccount(account.name, e.target.value)}
+                          placeholder={account.description}
+                          className="w-full px-3 py-2 pr-10 bg-gray-900 border border-gray-700 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        {isAddress && accountValue && (
+                          <button
+                            onClick={() => onCopyAddress(accountValue)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-purple-400 hover:bg-gray-800 rounded transition-colors"
+                            title="Copy address"
+                          >
+                            {justCopied === accountValue ? (
+                              <ClipboardCheck size={14} className="text-green-400" />
+                            ) : (
+                              <Clipboard size={14} />
+                            )}
+                          </button>
+                        )}
+                        {isAddress && copiedAddresses.length > 0 && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                            {copiedAddresses.slice(0, 5).map((addr, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  onUpdateAccount(account.name, addr);
+                                  onCopyAddress(addr);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
+                              >
+                                <div className="font-mono text-gray-300 truncate">{addr}</div>
+                                <div className="text-gray-500 text-[10px] mt-0.5">{addr.slice(0, 8)}...{addr.slice(-8)}</div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{account.description}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

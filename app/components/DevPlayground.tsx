@@ -392,7 +392,9 @@ const DevPlayground = () => {
                     <span className="text-sm font-medium">{block.name}</span>
                   </div>
                   {block.verified && (
-                    <ShieldCheck size={14} className="text-teal-500" title="VeriSoL Audited" />
+                    <span title="VeriSoL Audited">
+                      <ShieldCheck size={14} className="text-teal-500" />
+                    </span>
                   )}
                 </div>
                 <div className="absolute inset-0 border border-teal-500/0 group-hover:border-teal-500/30 rounded-lg pointer-events-none transition-all" />

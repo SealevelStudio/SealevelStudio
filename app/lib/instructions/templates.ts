@@ -330,7 +330,7 @@ export function getTemplateById(id: string): InstructionTemplate | undefined {
 
 // Helper to get all categories
 export function getAllCategories(): string[] {
-  return [...new Set(INSTRUCTION_TEMPLATES.map(template => template.category))];
+  return Array.from(new Set(INSTRUCTION_TEMPLATES.map(template => template.category)));
 }
 
 // Helper to search templates
