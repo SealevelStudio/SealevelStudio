@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Layers, TrendingUp, MessageSquare, Wallet, Zap, ArrowRight } from 'lucide-react';
+import { Layers, TrendingUp, MessageSquare, Wallet, Zap, ArrowRight, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 interface ServiceCardProps {
@@ -51,7 +51,11 @@ function ServiceCard({ title, description, icon, cost, link, features }: Service
   );
 }
 
-export function PremiumServices() {
+interface PremiumServicesProps {
+  onBack?: () => void;
+}
+
+export function PremiumServices({ onBack }: PremiumServicesProps) {
   const services = [
     {
       title: 'Transaction Bundler',
@@ -110,7 +114,19 @@ export function PremiumServices() {
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
       <div className="border-b border-gray-700 p-6">
-        <h1 className="text-3xl font-bold mb-2">Premium Services</h1>
+        <div className="flex items-center gap-4 mb-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft size={18} />
+              <span className="text-sm">Back</span>
+            </button>
+          )}
+          <h1 className="text-3xl font-bold">Premium Services</h1>
+        </div>
         <p className="text-gray-400">Unlock powerful tools for advanced Solana operations</p>
       </div>
 

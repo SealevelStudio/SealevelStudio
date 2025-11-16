@@ -20,6 +20,7 @@ import {
   Clock,
   DollarSign,
   Percent,
+  ArrowLeft,
 } from 'lucide-react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PoolScanner } from '../lib/pools/scanner';
@@ -38,9 +39,10 @@ import { getUserMessage } from '../lib/error-handling';
 
 interface ArbitrageScannerProps {
   onBuildTransaction?: (opportunity: ArbitrageOpportunity) => void;
+  onBack?: () => void;
 }
 
-export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) {
+export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScannerProps) {
   const { connection } = useConnection();
   const wallet = useWallet();
   const { trackFeatureUsage, checkFeatureAccess, getTrialStatus } = useUsageTracking();
@@ -261,6 +263,16 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
       {/* Header */}
       <div className="border-b border-slate-800 p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft size={18} />
+              <span className="text-sm">Back</span>
+            </button>
+          )}
           <h1 className="text-2xl font-bold">Arbitrage Scanner</h1>
           {lastScanTime && (
             <span className="text-sm text-slate-400 flex items-center gap-1">

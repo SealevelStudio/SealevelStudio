@@ -18,6 +18,8 @@ import { useTutorial } from './contexts/TutorialContext';
 import { TutorialFlow } from './components/TutorialFlow';
 import { VeriSolAttestation } from './components/VeriSolAttestation';
 import { LandingPage } from './components/LandingPage';
+import { PremiumServices } from './components/PremiumServices';
+import { Web2Tools } from './components/Web2Tools';
 
 // Suppress hydration warnings during development
 if (typeof window !== 'undefined') {
@@ -669,6 +671,8 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
     { id: 'simulation', label: 'Simulation', icon: <Play className="h-4 w-4" /> },
     { id: 'exporter', label: 'Code Exporter', icon: <Code className="h-4 w-4" /> },
     { id: 'attestation', label: 'VeriSol Attestation', icon: <ShieldCheck className="h-4 w-4" /> },
+    { id: 'premium', label: 'Premium Services', icon: <Zap className="h-4 w-4" /> },
+    { id: 'web2', label: 'Web2 Tools', icon: <Terminal className="h-4 w-4" /> },
   ];
 
   return (
@@ -750,7 +754,17 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
 
   // Scanner has its own full-screen layout
   if (activeView === 'scanner') {
-    return <ArbitrageScanner onBuildTransaction={handleArbitrageBuild} />;
+    return <ArbitrageScanner onBuildTransaction={handleArbitrageBuild} onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Premium Services has its own full-screen layout
+  if (activeView === 'premium') {
+    return <PremiumServices onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Web2 Tools has its own full-screen layout
+  if (activeView === 'web2') {
+    return <Web2Tools onBack={() => setActiveView('inspector')} />;
   }
 
   // Default single-column layout for other views
@@ -848,7 +862,7 @@ export default function App() {
   }
 
   // Main app interface
-  const isFullScreenView = activeView === 'builder' || activeView === 'scanner';
+  const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2';
   
   return (
     <ClientOnly>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BarChart3, Key, Webhook, Download, Plug, Share2, Users } from 'lucide-react';
+import { BarChart3, Key, Webhook, Download, Plug, Share2, Users, ArrowLeft } from 'lucide-react';
 
 interface ToolCardProps {
   title: string;
@@ -43,7 +43,11 @@ function ToolCard({ title, description, icon, link, status = 'available' }: Tool
   );
 }
 
-export function Web2Tools() {
+interface Web2ToolsProps {
+  onBack?: () => void;
+}
+
+export function Web2Tools({ onBack }: Web2ToolsProps) {
   const tools = [
     {
       title: 'Analytics Dashboard',
@@ -92,7 +96,19 @@ export function Web2Tools() {
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
       <div className="border-b border-gray-700 p-6">
-        <h1 className="text-3xl font-bold mb-2">Web2 Tools</h1>
+        <div className="flex items-center gap-4 mb-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft size={18} />
+              <span className="text-sm">Back</span>
+            </button>
+          )}
+          <h1 className="text-3xl font-bold">Web2 Tools</h1>
+        </div>
         <p className="text-gray-400">Traditional web services and integrations for enhanced functionality</p>
       </div>
 
