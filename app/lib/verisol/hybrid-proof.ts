@@ -1,6 +1,14 @@
 /**
  * Hybrid proof system: Supports both ZK proofs and hash commitments
  * Allows users to choose between maximum privacy (ZK) or speed (commitments)
+ * 
+ * TRUST MODEL:
+ * - ZK Proofs: Trustless (user generates proof, no trusted party)
+ * - Commitments: Requires trust in system operator (generates valid commitments)
+ * 
+ * The hybrid system automatically selects the best available method:
+ * - Prefers ZK proofs for trustlessness
+ * - Falls back to commitments for speed (when ZK unavailable)
  */
 
 import { generateBetaTesterAttestationProof } from './beta-tester-proof';

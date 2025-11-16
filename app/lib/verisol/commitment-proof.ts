@@ -1,6 +1,15 @@
 /**
  * Hash-based commitment system for privacy-preserving usage verification
  * Alternative to ZK proofs that is faster and simpler while maintaining privacy
+ * 
+ * ⚠️ TRUST MODEL: This approach requires trust in the system operator who generates
+ * valid commitments. For trustless verification, use ZK proofs instead.
+ * 
+ * To reduce trust:
+ * 1. Make commitment generation transparent (publish algorithm)
+ * 2. Use Merkle tree of commitments (publish root on-chain)
+ * 3. Allow users to verify their own commitments
+ * 4. Consider on-chain usage verification
  */
 
 import { createHash } from 'crypto';
