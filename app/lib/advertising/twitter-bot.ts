@@ -10,16 +10,28 @@ import { AdvertisingConfig, AdvertisingMessage, AdvertisingStats } from './types
 
 export class TwitterAdvertisingBot {
   private config: AdvertisingConfig['twitter'];
+  private tokenInfo: {
+    tokenName: string;
+    tokenSymbol: string;
+    tokenAddress: string;
+    tokenDescription?: string;
+  };
   private stats: AdvertisingStats;
   private postingInterval?: NodeJS.Timeout;
   private isRunning: boolean = false;
 
-  constructor(config: AdvertisingConfig['twitter']) {
+  constructor(config: AdvertisingConfig['twitter'], tokenInfo: {
+    tokenName: string;
+    tokenSymbol: string;
+    tokenAddress: string;
+    tokenDescription?: string;
+  }) {
     if (!config?.apiKey || !config?.apiSecret) {
       throw new Error('Twitter API credentials required');
     }
     
     this.config = config;
+    this.tokenInfo = tokenInfo;
     this.stats = {
       totalPosts: 0,
       telegramPosts: 0,
@@ -127,9 +139,9 @@ export class TwitterAdvertisingBot {
     
     const template = this.config?.messageTemplate || 
       `🚀 New Token Launch!\n\n` +
-      `Token: ${this.config?.tokenName || 'Unknown'}\n` +
-      `Symbol: ${this.config?.tokenSymbol || 'UNKNOWN'}\n` +
-      `Address: ${this.config?.tokenAddress || 'N/A'}\n\n` +
+      `Token: ${this.tokenInfo.tokenName || 'Unknown'}\n` +
+      `Symbol: ${this.tokenInfo.tokenSymbol || 'UNKNOWN'}\n` +
+      `Address: ${this.tokenInfo.tokenAddress || 'N/A'}\n\n` +
       `Get in early! 🎯\n\n` +
       hashtagString;
     
