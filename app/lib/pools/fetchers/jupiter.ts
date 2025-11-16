@@ -139,7 +139,8 @@ export class JupiterFetcher extends BasePoolFetcher {
     amount: string
   ): Promise<{ price: number; fee: number } | null> {
     try {
-      const url = `${JUPITER_API_BASE}/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=50`;
+      // Use Next.js API route to proxy requests (fixes CORS issues)
+      const url = `/api/jupiter/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=50`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -148,15 +149,8 @@ export class JupiterFetcher extends BasePoolFetcher {
 
       const data = await response.json();
       
-      if (data && data.outAmount && data.inAmount) {
-        const inAmount = BigInt(data.inAmount);
-        const outAmount = BigInt(data.outAmount);
-        const price = Number(outAmount) / Number(inAmount);
-        
-        // Estimate fee (Jupiter aggregates, so fee varies)
-        const fee = data.routePlan?.[0]?.swapInfo?.feeMint || 30;
-        
-        return { price, fee };
+      if (data && data.price !== undefined) {
+        return { price: data.price, fee: data.fee || 30 };
       }
 
       return null;
