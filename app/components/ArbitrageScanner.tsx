@@ -88,15 +88,22 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
           // Convert unconventional opportunities to standard format
           const converted: ArbitrageOpportunity[] = unconventional.map((opp: any) => {
             const baseProfit = opp.estimatedProfit || 0;
-            const inputAmount = BigInt(1_000_000_000);
+            const inputAmount = BigInt(1_000_000_000); // 1 SOL in lamports
             const profitInLamports = BigInt(Math.floor(baseProfit * 1e9));
             const outputAmount = inputAmount + profitInLamports;
+            
+            // Calculate profit percentage correctly: (profit / inputAmount) * 100
+            // baseProfit is in SOL, inputAmount is in lamports, so convert inputAmount to SOL
+            const inputAmountInSOL = Number(inputAmount) / 1e9;
+            const profitPercent = baseProfit > 0 && inputAmountInSOL > 0 
+              ? (baseProfit / inputAmountInSOL) * 100 
+              : 0;
             
             return {
               id: `unconventional-${opp.type}-${Date.now()}-${Math.random()}`,
               path: opp.path,
               profit: baseProfit,
-              profitPercent: baseProfit > 0 ? (baseProfit / 1) * 100 : 0,
+              profitPercent,
               inputAmount,
               outputAmount,
               gasEstimate: 10000,
