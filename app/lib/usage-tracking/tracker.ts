@@ -17,6 +17,10 @@ const FREE_TRIAL_FEATURES = {
   ai_query: 100, // 100 free AI queries
   code_export: 20, // 20 free exports
   advanced_transaction: 50, // 50 free advanced transactions
+  // Premium services are NOT included in free trial
+  // bundler_multi_send: 0,
+  // market_maker_setup: 0,
+  // etc.
 };
 
 /**
@@ -127,10 +131,37 @@ export function trackUsage(
   const baseCost = SEAL_TOKEN_ECONOMICS.pricing[feature] || 0;
   const cost = isTrialActive ? 0 : baseCost;
   
-  // Check if usage is allowed
-  const canUse = canUseFeature(userId, feature);
-  if (!canUse.allowed && isTrialActive) {
-    throw new Error(canUse.reason || 'Feature usage not allowed');
+  // Premium services are NOT included in free trial
+  const premiumServices: FeatureType[] = [
+    'bundler_multi_send',
+    'bundler_recipient',
+    'market_maker_setup',
+    'market_maker_monthly',
+    'market_maker_trade',
+    'telegram_bot_setup',
+    'telegram_bot_monthly',
+    'telegram_bot_post',
+    'twitter_bot_setup',
+    'twitter_bot_monthly',
+    'twitter_bot_tweet',
+  ];
+  
+  const isPremiumService = premiumServices.includes(feature);
+  
+  // Premium services require payment (not in free trial)
+  if (isPremiumService && isTrialActive) {
+    throw new Error(
+      `${feature} is a premium service and not included in the free trial. ` +
+      `Payment required: ${baseCost} SEAL tokens.`
+    );
+  }
+  
+  // Check if usage is allowed (for non-premium features)
+  if (!isPremiumService) {
+    const canUse = canUseFeature(userId, feature);
+    if (!canUse.allowed && isTrialActive) {
+      throw new Error(canUse.reason || 'Feature usage not allowed');
+    }
   }
   
   // Create usage record
