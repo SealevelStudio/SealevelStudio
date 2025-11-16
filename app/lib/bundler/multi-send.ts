@@ -97,7 +97,7 @@ export async function buildMultiSendTransaction(
   connection: Connection,
   payer: PublicKey,
   config: MultiSendConfig
-): Promise<{ transaction: Transaction; signers: Keypair[]; estimate: MultiSendEstimate }> {
+): Promise<{ transaction: Transaction; signers: Keypair[]; estimate: MultiSendEstimate; createdWallets: Array<{ keypair: Keypair; label?: string }> }> {
   const transaction = new Transaction();
   const signers: Keypair[] = [];
   const maxRecipients = config.maxRecipients || MAX_RECIPIENTS;
