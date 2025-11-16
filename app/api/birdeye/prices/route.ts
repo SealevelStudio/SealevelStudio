@@ -9,12 +9,13 @@ const BIRDEYE_API_BASE = 'https://public-api.birdeye.so';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const apiKey = process.env.BIRDEYE_API_KEY || searchParams.get('apiKey');
+    // Security: API keys should only come from environment variables, never from query parameters
+    const apiKey = process.env.BIRDEYE_API_KEY;
     
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Birdeye API key required. Set BIRDEYE_API_KEY environment variable or pass as query param.' },
-        { status: 400 }
+        { error: 'Birdeye API key required. Set BIRDEYE_API_KEY environment variable.' },
+        { status: 500 }
       );
     }
 

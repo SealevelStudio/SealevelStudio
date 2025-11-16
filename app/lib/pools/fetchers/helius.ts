@@ -13,20 +13,11 @@ export class HeliusFetcher extends BasePoolFetcher {
 
     try {
       // Use Helius API for faster, indexed pool data
+      // Note: API key is handled server-side in the API route
       // This is a placeholder - in production, use Helius's DEX API endpoints
-      const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
       
-      if (!apiKey) {
-        // Fallback to on-chain fetching if no API key
-        return {
-          pools: [],
-          errors: ['Helius API key not configured'],
-          lastUpdated: new Date(),
-        };
-      }
-
-      // Fetch pools via Helius API proxy
-      const response = await fetch(`/api/helius/pools?apiKey=${apiKey}&limit=100`);
+      // Fetch pools via Helius API proxy (API key handled server-side)
+      const response = await fetch(`/api/helius/pools?limit=100`);
       
       if (!response.ok) {
         errors.push(`Helius API error: ${response.statusText}`);
@@ -57,12 +48,7 @@ export class HeliusFetcher extends BasePoolFetcher {
   async fetchPoolById(connection: Connection, poolId: string): Promise<PoolData | null> {
     try {
       // Use Helius API for specific pool lookup
-      const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
-      
-      if (!apiKey) {
-        return null;
-      }
-
+      // Note: API key is handled server-side in the API route
       // Fetch specific pool data
       // Placeholder - implement actual Helius pool lookup
       return null;

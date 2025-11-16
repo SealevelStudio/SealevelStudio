@@ -9,12 +9,13 @@ const HELIUS_API_BASE = 'https://api.helius.xyz/v0';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const apiKey = process.env.HELIUS_API_KEY || searchParams.get('apiKey');
+    // Security: API keys should only come from environment variables, never from query parameters
+    const apiKey = process.env.HELIUS_API_KEY;
     
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Helius API key required. Set HELIUS_API_KEY environment variable or pass as query param.' },
-        { status: 400 }
+        { error: 'Helius API key required. Set HELIUS_API_KEY environment variable.' },
+        { status: 500 }
       );
     }
 

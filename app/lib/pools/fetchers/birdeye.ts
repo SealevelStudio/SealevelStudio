@@ -12,17 +12,8 @@ export class BirdeyeFetcher extends BasePoolFetcher {
     const errors: string[] = [];
 
     try {
-      const apiKey = process.env.NEXT_PUBLIC_BIRDEYE_API_KEY;
-      
-      if (!apiKey) {
-        return {
-          pools: [],
-          errors: ['Birdeye API key not configured'],
-          lastUpdated: new Date(),
-        };
-      }
-
       // Fetch popular token pairs from Birdeye
+      // Note: API key is handled server-side in the API route
       const popularTokens = [
         'So11111111111111111111111111111111111111112', // SOL
         'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
@@ -36,13 +27,13 @@ export class BirdeyeFetcher extends BasePoolFetcher {
             const tokenA = popularTokens[i];
             const tokenB = popularTokens[j];
 
-            // Fetch price data
-            const priceResponse = await fetch(`/api/birdeye/prices?address=${tokenA}&type=price&apiKey=${apiKey}`);
+            // Fetch price data (API key handled server-side)
+            const priceResponse = await fetch(`/api/birdeye/prices?address=${tokenA}&type=price`);
             if (priceResponse.ok) {
               const priceData = await priceResponse.json();
               
               // Fetch pairs data to get pool information
-              const pairsResponse = await fetch(`/api/birdeye/prices?address=${tokenA}&type=pairs&apiKey=${apiKey}`);
+              const pairsResponse = await fetch(`/api/birdeye/prices?address=${tokenA}&type=pairs`);
               
               if (pairsResponse.ok) {
                 const pairsData = await pairsResponse.json();
@@ -74,13 +65,8 @@ export class BirdeyeFetcher extends BasePoolFetcher {
 
   async fetchPoolById(connection: Connection, poolId: string): Promise<PoolData | null> {
     try {
-      const apiKey = process.env.NEXT_PUBLIC_BIRDEYE_API_KEY;
-      
-      if (!apiKey) {
-        return null;
-      }
-
       // Fetch specific pool data from Birdeye
+      // Note: API key is handled server-side in the API route
       // Placeholder - implement actual Birdeye pool lookup
       return null;
     } catch (error) {
@@ -92,11 +78,8 @@ export class BirdeyeFetcher extends BasePoolFetcher {
   // Helper method to enrich pool data with Birdeye market data
   async enrichPoolData(pool: PoolData): Promise<PoolData> {
     try {
-      const apiKey = process.env.NEXT_PUBLIC_BIRDEYE_API_KEY;
-      if (!apiKey) return pool;
-
-      // Fetch volume and market data
-      const volumeResponse = await fetch(`/api/birdeye/prices?address=${pool.tokenA.mint}&type=volume&apiKey=${apiKey}`);
+      // Fetch volume and market data (API key handled server-side)
+      const volumeResponse = await fetch(`/api/birdeye/prices?address=${pool.tokenA.mint}&type=volume`);
       
       if (volumeResponse.ok) {
         const volumeData = await volumeResponse.json();
