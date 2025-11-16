@@ -1,0 +1,195 @@
+// SEAL Token Configuration
+// Native token for Sealevel Studio application
+
+import { PublicKey } from '@solana/web3.js';
+
+/**
+ * SEAL Token Configuration
+ * 
+ * SEAL is the native utility token for Sealevel Studio.
+ * Users must spend SEAL tokens to use premium features:
+ * - Arbitrage Scanner scans
+ * - Transaction Simulations
+ * - AI Agent queries
+ * - Code Exports
+ * - Advanced transaction building
+ */
+
+// Token Metadata
+export const SEAL_TOKEN_CONFIG = {
+  // Basic Token Info
+  name: 'Sealevel Studio Token',
+  symbol: 'SEAL',
+  decimals: 9, // Standard Solana token decimals
+  
+  // Mint Configuration
+  // Note: In production, mint address should be deterministic or stored securely
+  // For now, this will be generated on first initialization
+  mintAddress: null as string | null, // Will be set after mint creation
+  
+  // Supply Configuration
+  totalSupply: 1_000_000_000, // 1 billion SEAL tokens (1,000,000,000 with 9 decimals)
+  initialDistribution: {
+    treasury: 400_000_000, // 40% - Treasury for operations and rewards
+    team: 200_000_000, // 20% - Team allocation (vested)
+    liquidity: 200_000_000, // 20% - Initial liquidity pools
+    community: 100_000_000, // 10% - Community rewards and airdrops
+    reserves: 100_000_000, // 10% - Reserves for future use
+  },
+  
+  // Authority Configuration
+  mintAuthority: null as string | null, // Will be set to treasury address
+  freezeAuthority: null, // No freeze authority (tokens cannot be frozen)
+  
+  // Token-2022 Features (optional, can be enabled later)
+  useToken2022: false, // Start with standard SPL Token
+  
+  // Metaplex Metadata
+  metadata: {
+    name: 'Sealevel Studio Token',
+    symbol: 'SEAL',
+    description: 'The native utility token for Sealevel Studio - a comprehensive Solana transaction builder and R&D platform.',
+    image: 'https://sealevel.studio/logo.png', // Placeholder - update with actual logo URL
+    externalUrl: 'https://sealevel.studio',
+    attributes: [
+      { trait_type: 'Type', value: 'Utility Token' },
+      { trait_type: 'Platform', value: 'Solana' },
+      { trait_type: 'Use Case', value: 'Application Access' },
+    ],
+  },
+  
+  // Treasury Configuration
+  treasury: {
+    address: null as string | null, // Treasury wallet address (will be set)
+    purpose: 'Hold SEAL tokens for operations, rewards, and feature access',
+  },
+  
+  // Distribution Schedule (for vesting)
+  vesting: {
+    team: {
+      total: 200_000_000,
+      cliff: 6, // 6 months cliff
+      duration: 24, // 24 months total vesting
+      startDate: null as Date | null, // Will be set on deployment
+    },
+  },
+};
+
+// Token Economics (pricing per feature)
+export const SEAL_TOKEN_ECONOMICS = {
+  // Feature Pricing (in SEAL tokens)
+  pricing: {
+    scanner_scan: 10, // 10 SEAL per scan
+    scanner_auto_refresh: 50, // 50 SEAL per hour of auto-refresh
+    simulation: 5, // 5 SEAL per simulation
+    ai_query: 2, // 2 SEAL per AI query
+    code_export: 3, // 3 SEAL per code export
+    advanced_transaction: 1, // 1 SEAL per advanced transaction build
+  },
+  
+  // Subscription Tiers
+  subscriptions: {
+    free: {
+      name: 'Free',
+      price: 0, // Free tier
+      features: {
+        scannerScans: 5, // 5 free scans per day
+        simulations: 3, // 3 free simulations per day
+        aiQueries: 10, // 10 free AI queries per day
+        codeExports: 2, // 2 free exports per day
+      },
+    },
+    basic: {
+      name: 'Basic',
+      price: 1000, // 1000 SEAL per month
+      features: {
+        scannerScans: 50, // 50 scans per day
+        simulations: 20, // 20 simulations per day
+        aiQueries: 100, // 100 AI queries per day
+        codeExports: 10, // 10 exports per day
+      },
+    },
+    pro: {
+      name: 'Pro',
+      price: 5000, // 5000 SEAL per month
+      features: {
+        scannerScans: -1, // Unlimited
+        simulations: -1, // Unlimited
+        aiQueries: -1, // Unlimited
+        codeExports: -1, // Unlimited
+      },
+    },
+  },
+  
+  // Bulk Discounts
+  bulkDiscounts: {
+    scannerScans: {
+      '100': 0.1, // 10% off for 100+ scans
+      '500': 0.15, // 15% off for 500+ scans
+      '1000': 0.2, // 20% off for 1000+ scans
+    },
+  },
+  
+  // Referral Rewards
+  referral: {
+    referrerReward: 100, // 100 SEAL for referring a user
+    refereeReward: 50, // 50 SEAL for new user signup
+  },
+};
+
+// Helper function to get SEAL mint address
+export function getSealMintAddress(): PublicKey | null {
+  if (!SEAL_TOKEN_CONFIG.mintAddress) {
+    return null;
+  }
+  try {
+    return new PublicKey(SEAL_TOKEN_CONFIG.mintAddress);
+  } catch {
+    return null;
+  }
+}
+
+// Helper function to set SEAL mint address (after creation)
+export function setSealMintAddress(address: string): void {
+  SEAL_TOKEN_CONFIG.mintAddress = address;
+}
+
+// Helper function to get treasury address
+export function getTreasuryAddress(): PublicKey | null {
+  if (!SEAL_TOKEN_CONFIG.treasury.address) {
+    return null;
+  }
+  try {
+    return new PublicKey(SEAL_TOKEN_CONFIG.treasury.address);
+  } catch {
+    return null;
+  }
+}
+
+// Helper function to set treasury address
+export function setTreasuryAddress(address: string): void {
+  SEAL_TOKEN_CONFIG.treasury.address = address;
+}
+
+// Helper function to calculate feature cost
+export function getFeatureCost(feature: string): number {
+  const pricing = SEAL_TOKEN_ECONOMICS.pricing as Record<string, number>;
+  return pricing[feature] || 0;
+}
+
+// Helper function to format SEAL amount (with decimals)
+export function formatSealAmount(lamports: number | bigint): string {
+  const amount = typeof lamports === 'bigint' ? Number(lamports) : lamports;
+  const seal = amount / Math.pow(10, SEAL_TOKEN_CONFIG.decimals);
+  return seal.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: SEAL_TOKEN_CONFIG.decimals,
+  });
+}
+
+// Helper function to parse SEAL amount (to lamports)
+export function parseSealAmount(seal: string | number): bigint {
+  const amount = typeof seal === 'string' ? parseFloat(seal) : seal;
+  return BigInt(Math.floor(amount * Math.pow(10, SEAL_TOKEN_CONFIG.decimals)));
+}
+

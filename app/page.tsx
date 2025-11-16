@@ -10,6 +10,9 @@ import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilde
 import { TransactionPreview } from './components/TransactionPreview';
 import { ClientOnly } from './components/ClientOnly';
 import { ArbitrageScanner } from './components/ArbitrageScanner';
+import { FreeTrialBanner } from './components/FreeTrialBanner';
+import { AccountSecurityAgent } from './components/AccountSecurityAgent';
+import { GlobalScannerAgent } from './components/GlobalScannerAgent';
 import { useNetwork } from './contexts/NetworkContext';
 import { useTutorial } from './contexts/TutorialContext';
 import { TutorialFlow } from './components/TutorialFlow';
@@ -718,6 +721,7 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
   // Default single-column layout for other views
   return (
     <>
+      <FreeTrialBanner />
       <main className="flex-1 overflow-y-auto p-6 md:p-8">
         {activeView === 'inspector' && <AccountInspectorView connection={connection} network={network} publicKey={publicKey} />}
         {activeView === 'simulation' && <SimulationView transactionDraft={transactionPreview?.transaction} />}
@@ -854,6 +858,10 @@ export default function App() {
           />
         </div>
       </div>
+      
+      {/* AI Agents */}
+      <AccountSecurityAgent />
+      <GlobalScannerAgent />
     </ClientOnly>
   );
 }

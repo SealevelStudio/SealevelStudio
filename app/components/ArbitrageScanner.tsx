@@ -32,6 +32,7 @@ import {
   DEXProtocol,
 } from '../lib/pools/types';
 import { ScannerAgent } from './ScannerAgent';
+import { useUsageTracking } from '../hooks/useUsageTracking';
 
 interface ArbitrageScannerProps {
   onBuildTransaction?: (opportunity: ArbitrageOpportunity) => void;
@@ -39,6 +40,7 @@ interface ArbitrageScannerProps {
 
 export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) {
   const { connection } = useConnection();
+  const { trackFeatureUsage, checkFeatureAccess, getTrialStatus } = useUsageTracking();
   const [scanner] = useState(() => new PoolScanner());
   const [pools, setPools] = useState<PoolData[]>([]);
   const [opportunities, setOpportunities] = useState<ArbitrageOpportunity[]>([]);
@@ -66,10 +68,26 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
   const handleScan = useCallback(async () => {
     if (isScanning) return;
 
+    // Check if user can use scanner (free trial or subscription)
+    const access = checkFeatureAccess('scanner_scan');
+    if (!access.allowed) {
+      alert(access.reason || 'Scanner scan not available. Please check your subscription or free trial status.');
+      return;
+    }
+
     setIsScanning(true);
     setErrors([]);
 
     try {
+      // Track usage (payment collection disabled during development)
+      trackFeatureUsage('scanner_scan', {
+        config: {
+          enabledDEXs: config.enabledDEXs,
+          maxHops: config.maxHops,
+          minProfitThreshold: config.minProfitThreshold,
+        },
+      });
+
       scanner.updateConfig(config);
       const state = await scanner.scan(connection);
       

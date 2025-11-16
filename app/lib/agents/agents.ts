@@ -42,6 +42,22 @@ export const AVAILABLE_AGENTS: Agent[] = [
     color: 'bg-cyan-600',
     enabled: true,
   },
+  {
+    id: 'account-security-agent',
+    name: 'Account & Security Agent',
+    description: 'Handles usage tracking, payments, client accounts, and security',
+    icon: '🛡️',
+    color: 'bg-purple-600',
+    enabled: true,
+  },
+  {
+    id: 'global-scanner-agent',
+    name: 'Global Scanner Agent',
+    description: 'Blockchain analytics using Dune Analytics and Solscan API',
+    icon: '🌐',
+    color: 'bg-blue-600',
+    enabled: true,
+  },
 ];
 
 export function getAgentById(id: string): Agent | undefined {
