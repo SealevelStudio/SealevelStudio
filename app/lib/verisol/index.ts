@@ -5,6 +5,7 @@ export * from './mint';
 export * from './check';
 export * from './beta-tester-proof';
 export * from './beta-tester-check';
+export * from './setup-guide';
 export { IDL as VeriSolIDL } from './aletheia_protocol';
 export type { AletheiaProtocol as VeriSolProgram } from './aletheia_protocol';
 
