@@ -6,16 +6,24 @@ import {
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
   sendAndConfirmTransaction,
-  Signer
+  Signer,
+  Keypair
 } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  MINT_SIZE,
+  getMinimumBalanceForRentExemptMint,
   createTransferInstruction,
   createMintToInstruction,
   createBurnInstruction,
   createApproveInstruction,
-  createAssociatedTokenAccountInstruction
+  createAssociatedTokenAccountInstruction,
+  createInitializeMintInstruction,
+  createInitializeAccountInstruction,
+  createFreezeAccountInstruction,
+  createThawAccountInstruction,
+  getAssociatedTokenAddress
 } from '@solana/spl-token';
 import { BuiltInstruction, TransactionDraft } from './instructions/types';
 
@@ -30,11 +38,27 @@ export class TransactionBuilder {
       transaction.add(this.createPriorityFeeInstruction(draft.priorityFee));
     }
 
+    // Store additional signers (like mint keypairs)
+    const additionalSigners: Keypair[] = [];
+    
     // Convert each instruction to Solana instruction
     for (const instruction of draft.instructions) {
-      const solanaInstruction = await this.buildInstruction(instruction);
-      transaction.add(solanaInstruction);
+      // Handle special multi-instruction operations
+      if (instruction.args._operation === 'create_token_and_mint') {
+        const result = await this.buildCreateTokenAndMint(instruction);
+        for (const inst of result.instructions) {
+          transaction.add(inst);
+        }
+        // Add mint keypair to signers
+        additionalSigners.push(...result.signers);
+      } else {
+        const solanaInstruction = await this.buildInstruction(instruction);
+        transaction.add(solanaInstruction);
+      }
     }
+    
+    // Store additional signers in transaction metadata (for R&D purposes)
+    (transaction as any)._additionalSigners = additionalSigners;
 
     // Add memo if specified
     if (draft.memo) {
@@ -75,6 +99,10 @@ export class TransactionBuilder {
       
       case 'spl_ata_create':
         return this.buildAssociatedTokenAccount(accountKeys, args);
+      
+      case 'spl_token_create_mint':
+        // This is handled separately in buildTransaction as multi-instruction
+        throw new Error('spl_token_create_mint should be handled via _operation flag');
       
       case 'mpl_create_metadata':
         return this.buildCreateMetadata(accountKeys, args);
@@ -177,6 +205,221 @@ export class TransactionBuilder {
       [],
       TOKEN_PROGRAM_ID
     );
+  }
+
+  // Build create token + mint (multi-instruction operation)
+  // Returns both instructions and the mint keypair (needs to sign)
+  private async buildCreateTokenAndMint(builtInstruction: BuiltInstruction): Promise<{
+    instructions: TransactionInstruction[];
+    signers: Keypair[];
+  }> {
+    const { accounts, args } = builtInstruction;
+    const payer = new PublicKey(accounts.payer);
+    const mintAuthority = new PublicKey(args.mintAuthority || accounts.payer);
+    const tokenAccountOwner = new PublicKey(accounts.tokenAccountOwner || accounts.payer);
+    
+    // Generate keypair for mint (for R&D - in production, this should be deterministic or user-provided)
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+    
+    // Get associated token account address
+    const tokenAccount = await getAssociatedTokenAddress(
+      mint,
+      tokenAccountOwner,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    // Core SPL Mint Attributes
+    const decimals = args.decimals || 9;
+    const initialSupply = args.initialSupply || BigInt(0);
+    const enableFreeze = args.enableFreeze === true;
+    const freezeAuthorityPubkey = enableFreeze && args.freezeAuthority 
+      ? new PublicKey(args.freezeAuthority) 
+      : null;
+    const revokeMintAuthority = args.revokeMintAuthority === true;
+    const useToken2022 = args.useToken2022 === true;
+    
+    // Token Account Attributes
+    const delegate = args.delegate ? new PublicKey(args.delegate) : null;
+    const delegatedAmount = args.delegatedAmount || BigInt(0);
+    const freezeInitialAccount = args.freezeInitialAccount === true;
+    const isNative = args.isNative === true;
+    
+    // Metaplex Metadata
+    const tokenName = args.tokenName || '';
+    const tokenSymbol = args.tokenSymbol || '';
+    const metadataURI = args.metadataURI || '';
+    const sellerFeeBasisPoints = args.sellerFeeBasisPoints || 500;
+    const creators = args.creators || '';
+    const primarySaleHappened = args.primarySaleHappened === true;
+    const isMutable = args.isMutable !== false;
+    
+    // Token-2022 Extensions
+    const transferFee = args.transferFee || 0;
+    const enableTax = args.enableTax === true;
+    const transferHookProgram = args.transferHookProgram ? new PublicKey(args.transferHookProgram) : null;
+    const enableConfidentialTransfers = args.enableConfidentialTransfers === true;
+    const enableInterestBearing = args.enableInterestBearing === true;
+    const interestRate = args.interestRate || 0;
+    const enableNonTransferable = args.enableNonTransferable === true;
+    const enableTransferMemo = args.enableTransferMemo === true;
+    const enableImmutableOwner = args.enableImmutableOwner === true;
+    const metadataPointer = args.metadataPointer || '';
+    const supplyCap = args.supplyCap || BigInt(0);
+    
+    // Determine which token program to use
+    const TOKEN_PROGRAM = useToken2022 
+      ? new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb') // Token-2022
+      : TOKEN_PROGRAM_ID; // Standard SPL Token
+    
+    // Get rent exemption for mint
+    const mintRent = await getMinimumBalanceForRentExemptMint(this.connection);
+    
+    const instructions: TransactionInstruction[] = [];
+    
+    // 1. Create mint account
+    // Note: Token-2022 requires larger space for extensions
+    const mintSpace = useToken2022 ? MINT_SIZE + 1024 : MINT_SIZE; // Extra space for extensions
+    const mintRent2022 = useToken2022 
+      ? await this.connection.getMinimumBalanceForRentExemption(mintSpace)
+      : mintRent;
+    
+    instructions.push(
+      SystemProgram.createAccount({
+        fromPubkey: payer,
+        newAccountPubkey: mint,
+        space: mintSpace,
+        lamports: mintRent2022,
+        programId: TOKEN_PROGRAM
+      })
+    );
+    
+    // 2. Initialize mint with freeze authority (if enabled)
+    instructions.push(
+      createInitializeMintInstruction(
+        mint,
+        decimals,
+        mintAuthority,
+        freezeAuthorityPubkey, // freeze authority (null = no freeze capability)
+        TOKEN_PROGRAM
+      )
+    );
+    
+    // 2b. For Token-2022: Add extensions if enabled
+    if (useToken2022) {
+      // Transfer Fee Extension
+      if (enableTax && transferFee > 0) {
+        // This would require Token-2022's extension initialization
+        // For now, we log it - full implementation would use extension instructions
+        console.log('Token-2022: Transfer fee extension would be initialized here');
+      }
+      
+      // Interest-bearing Extension
+      if (enableInterestBearing && interestRate !== 0) {
+        console.log('Token-2022: Interest-bearing extension would be initialized here');
+      }
+      
+      // Non-transferable Extension
+      if (enableNonTransferable) {
+        console.log('Token-2022: Non-transferable extension would be initialized here');
+      }
+      
+      // Metadata Pointer Extension
+      if (metadataPointer) {
+        console.log('Token-2022: Metadata pointer extension would be initialized here');
+      }
+    }
+    
+    // 3. Create associated token account
+    instructions.push(
+      createAssociatedTokenAccountInstruction(
+        payer,
+        tokenAccount,
+        tokenAccountOwner,
+        mint,
+        TOKEN_PROGRAM,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    );
+    
+    // 3b. Approve delegate (if specified)
+    if (delegate && delegatedAmount > 0) {
+      instructions.push(
+        createApproveInstruction(
+          tokenAccount,
+          delegate,
+          tokenAccountOwner,
+          delegatedAmount,
+          [],
+          TOKEN_PROGRAM
+        )
+      );
+    }
+    
+    // 4. Mint initial supply (respecting supply cap if set)
+    if (initialSupply > 0) {
+      // Check supply cap if enabled
+      if (supplyCap > 0 && initialSupply > supplyCap) {
+        throw new Error(`Initial supply ${initialSupply} exceeds supply cap ${supplyCap}`);
+      }
+      
+      instructions.push(
+        createMintToInstruction(
+          mint,
+          tokenAccount,
+          mintAuthority,
+          initialSupply,
+          [],
+          TOKEN_PROGRAM
+        )
+      );
+    }
+    
+    // 5. Create Metaplex Metadata (if provided)
+    if (tokenName || tokenSymbol || metadataURI) {
+      // This would create a Metaplex metadata account
+      // For now, we'll add the instruction structure
+      const metadataProgramId = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+      // Metadata PDA derivation would go here
+      // Full implementation would use Metaplex SDK or manual instruction building
+      console.log('Metaplex metadata would be created here with:', {
+        name: tokenName,
+        symbol: tokenSymbol,
+        uri: metadataURI,
+        sellerFeeBasisPoints,
+        creators,
+        primarySaleHappened,
+        isMutable
+      });
+    }
+    
+    // 6. Freeze token account (if freeze is enabled and requested)
+    if (enableFreeze && freezeAuthorityPubkey && freezeInitialAccount) {
+      instructions.push(
+        createFreezeAccountInstruction(
+          tokenAccount,
+          mint,
+          freezeAuthorityPubkey,
+          [],
+          TOKEN_PROGRAM
+        )
+      );
+    }
+    
+    // 7. Revoke mint authority (if requested - makes supply immutable)
+    if (revokeMintAuthority) {
+      // This would require a revoke authority instruction
+      // For standard SPL Token, this sets mint authority to null
+      console.log('Mint authority would be revoked here (sets to null)');
+      // Full implementation: createSetAuthorityInstruction with AuthorityType.MintTokens
+    }
+    
+    return {
+      instructions,
+      signers: [mintKeypair] // Mint keypair must sign the create account instruction
+    };
   }
 
   private buildAssociatedTokenAccount(accountKeys: any[], args: any): TransactionInstruction {

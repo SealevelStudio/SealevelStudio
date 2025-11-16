@@ -64,7 +64,7 @@ interface Block {
   icon: string;
   color: string;
   verified: boolean;
-  params: Record<string, string>;
+  params: Record<string, string | undefined>; // <-- FIX IS HERE
   instanceId?: string;
 }
 
@@ -95,7 +95,7 @@ const DevPlayground = () => {
   const addBlock = (block: Block) => {
     const newBlock: Block = { 
       ...block, 
-      instanceId: Math.random().toString(36).substr(2, 9) 
+      instanceId: Math.random().toString(36).substring(2, 11) // You already fixed this!
     };
     setWorkflow([...workflow, newBlock]);
     addLog(`Added block: ${block.name}`);
@@ -185,7 +185,10 @@ const DevPlayground = () => {
               args[key] = value;
             }
           } else if (account) {
-            accounts[key] = value;
+            // Ensure value is not undefined before assigning to string
+            if (typeof value === 'string') {
+              accounts[key] = value;
+            }
           }
         });
       }
@@ -358,10 +361,10 @@ const DevPlayground = () => {
         <aside className="w-64 border-r border-slate-800 bg-slate-900/30 flex flex-col">
           <div className="p-3 border-b border-slate-800">
              <div className="flex bg-slate-800 p-1 rounded-lg">
-               {Object.keys(LEGO_CATEGORIES).map(cat => (
+               {(Object.keys(LEGO_CATEGORIES) as Array<keyof typeof LEGO_CATEGORIES>).map(cat => (
                  <button
                    key={cat}
-                   onClick={() => setActiveCategory(cat as keyof typeof LEGO_CATEGORIES)}
+                   onClick={() => setActiveCategory(cat)}
                    className={`flex-1 text-xs py-1.5 rounded-md transition-all ${
                      activeCategory === cat 
                      ? 'bg-slate-700 text-white shadow-sm' 
@@ -375,7 +378,7 @@ const DevPlayground = () => {
           </div>
           
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {LEGO_CATEGORIES[activeCategory].map(block => (
+            {LEGO_CATEGORIES[activeCategory].map((block: Block) => (
               <div 
                 key={block.id}
                 onClick={() => addBlock(block)}
@@ -389,7 +392,9 @@ const DevPlayground = () => {
                     <span className="text-sm font-medium">{block.name}</span>
                   </div>
                   {block.verified && (
-                    <ShieldCheck size={14} className="text-teal-500" title="VeriSoL Audited" />
+                    <span title="VeriSoL Audited">
+                      <ShieldCheck size={14} className="text-teal-500" />
+                    </span>
                   )}
                 </div>
                 <div className="absolute inset-0 border border-teal-500/0 group-hover:border-teal-500/30 rounded-lg pointer-events-none transition-all" />
@@ -600,7 +605,7 @@ const DevPlayground = () => {
                      <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">{key}</label>
                      <input 
                        type="text" 
-                       value={value} 
+                       value={value || ''} // Handle potential undefined value
                        onChange={(e) => updateBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
                      />
@@ -652,4 +657,3 @@ const DevPlayground = () => {
 };
 
 export default DevPlayground;
-

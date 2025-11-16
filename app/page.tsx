@@ -1,14 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getMint } from '@solana/spl-token';
-import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal } from 'lucide-react';
+import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WalletButton from './components/WalletButton';
 import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilder';
 import { TransactionPreview } from './components/TransactionPreview';
 import { ClientOnly } from './components/ClientOnly';
+import { ArbitrageScanner } from './components/ArbitrageScanner';
+import { FreeTrialBanner } from './components/FreeTrialBanner';
+import { AccountSecurityAgent } from './components/AccountSecurityAgent';
+import { GlobalScannerAgent } from './components/GlobalScannerAgent';
 import { useNetwork } from './contexts/NetworkContext';
 import { useTutorial } from './contexts/TutorialContext';
 import { TutorialFlow } from './components/TutorialFlow';
@@ -160,7 +164,7 @@ function parseSystemAccount(data: Buffer) {
 
 // ### Account Inspector View ###
 // This is the core feature we're building now
-function AccountInspectorView({ connection, network, publicKey }) {
+function AccountInspectorView({ connection, network, publicKey }: { connection: Connection; network: string; publicKey: PublicKey | null }) {
   const [accountId, setAccountId] = useState('');
   const [accountData, setAccountData] = useState<ParsedAccountData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -217,7 +221,7 @@ function AccountInspectorView({ connection, network, publicKey }) {
       setError(`✅ Connection working! RPC: ${connection.rpcEndpoint}`);
     } catch (err) {
       console.error('Connection test failed:', err);
-      setError(`❌ Connection failed: ${err.message}`);
+      setError(`❌ Connection failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -320,7 +324,7 @@ function AccountInspectorView({ connection, network, publicKey }) {
   };
 
   // Example addresses for testing
-  const exampleAddresses = {
+  const exampleAddresses: Record<string, string[]> = {
     mainnet: [
       '11111111111111111111111111111112', // System Program
       'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC Mint
@@ -594,8 +598,8 @@ function Header({
   wallet,
   onBackToLanding
 }: {
-  network: string;
-  setNetwork: (network: string) => void;
+  network: keyof typeof NETWORKS;
+  setNetwork: (network: keyof typeof NETWORKS) => void;
   networks: typeof NETWORKS;
   wallet: React.ReactNode;
   onBackToLanding?: () => void;
@@ -640,10 +644,11 @@ function Header({
 }
 
 // 2. Sidebar Component
-function Sidebar({ activeView, setActiveView }) {
+function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveView: (view: string) => void }) {
   const navItems = [
     { id: 'inspector', label: 'Account Inspector', icon: <Search className="h-4 w-4" /> },
     { id: 'builder', label: 'Transaction Builder', icon: <Wrench className="h-4 w-4" /> },
+    { id: 'scanner', label: 'Arbitrage Scanner', icon: <TrendingUp className="h-4 w-4" /> },
     { id: 'simulation', label: 'Simulation', icon: <Play className="h-4 w-4" /> },
     { id: 'exporter', label: 'Code Exporter', icon: <Code className="h-4 w-4" /> },
   ];
@@ -676,7 +681,7 @@ function Sidebar({ activeView, setActiveView }) {
 }
 
 // 3. Main Content Area Component
-function MainContent({ activeView, connection, network, publicKey }) {
+function MainContent({ activeView, setActiveView, connection, network, publicKey }: { activeView: string; setActiveView: (view: string) => void; connection: Connection; network: keyof typeof NETWORKS; publicKey: PublicKey | null }) {
   const [transactionPreview, setTransactionPreview] = useState<{
     transaction: any;
     cost: any;
@@ -696,14 +701,27 @@ function MainContent({ activeView, connection, network, publicKey }) {
     setTransactionPreview(null);
   };
 
+  const handleArbitrageBuild = (opportunity: any) => {
+    // Switch to builder view and pass opportunity
+    setActiveView('builder');
+    // The opportunity will be handled by the builder
+    console.log('Building transaction for opportunity:', opportunity);
+  };
+
   // Transaction Builder has its own full-screen layout
   if (activeView === 'builder') {
-    return <UnifiedTransactionBuilder onTransactionBuilt={handleTransactionBuilt} />;
+    return <UnifiedTransactionBuilder onTransactionBuilt={handleTransactionBuilt} onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Scanner has its own full-screen layout
+  if (activeView === 'scanner') {
+    return <ArbitrageScanner onBuildTransaction={handleArbitrageBuild} />;
   }
 
   // Default single-column layout for other views
   return (
     <>
+      <FreeTrialBanner />
       <main className="flex-1 overflow-y-auto p-6 md:p-8">
         {activeView === 'inspector' && <AccountInspectorView connection={connection} network={network} publicKey={publicKey} />}
         {activeView === 'simulation' && <SimulationView transactionDraft={transactionPreview?.transaction} />}
@@ -779,8 +797,13 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'landing' | 'tutorial' | 'app'>('landing');
   const [activeView, setActiveView] = useState('inspector');
   const { publicKey } = useWallet();
-  const { network, connection, setNetwork } = useNetwork();
+  const { network, setNetwork } = useNetwork();
   const { shouldShowTutorial, completeTutorial } = useTutorial();
+  
+  // Create connection based on network
+  const connection = useMemo(() => {
+    return new Connection(NETWORKS[network].rpcUrl, 'confirmed');
+  }, [network]);
 
   const handleGetStarted = () => {
     if (shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler')) {
@@ -802,18 +825,17 @@ export default function App() {
     return (
       <TutorialFlow 
         onComplete={() => setCurrentScreen('app')} 
-        onSkip={() => setCurrentScreen('app')}
       />
     );
   }
 
   // Main app interface
-  const isBuilderView = activeView === 'builder';
+  const isFullScreenView = activeView === 'builder' || activeView === 'scanner';
   
   return (
     <ClientOnly>
       <div className="h-screen flex flex-col bg-gray-900">
-        {!isBuilderView && (
+        {!isFullScreenView && (
           <Header 
             network={network} 
             setNetwork={setNetwork} 
@@ -824,17 +846,22 @@ export default function App() {
         )}
         
         <div className="flex-1 flex overflow-hidden">
-          {!isBuilderView && (
+          {!isFullScreenView && (
             <Sidebar activeView={activeView} setActiveView={setActiveView} />
           )}
           <MainContent 
-            activeView={activeView} 
+            activeView={activeView}
+            setActiveView={setActiveView}
             connection={connection} 
             network={network} 
             publicKey={publicKey} 
           />
         </div>
       </div>
+      
+      {/* AI Agents */}
+      <AccountSecurityAgent />
+      <GlobalScannerAgent />
     </ClientOnly>
   );
 }
