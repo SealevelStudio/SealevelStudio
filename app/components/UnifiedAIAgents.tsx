@@ -80,10 +80,10 @@ export function UnifiedAIAgents(props: UnifiedAIAgentsProps) {
         return generateTransactionResponse(message, props.simpleWorkflow || [], props.errors || [], props.warnings || []);
       
       case 'scanner-agent':
-        return generateScannerResponse(message, props.opportunities || [], props.selectedOpportunity, props.pools || []);
+        return generateScannerResponse(message, props.opportunities || [], props.selectedOpportunity || null, props.pools || []);
       
       case 'simulator-agent':
-        return generateSimulatorResponse(message, props.transaction, props.simpleWorkflow || []);
+        return generateSimulatorResponse(message, props.transaction || null, props.simpleWorkflow || []);
       
       case 'account-security-agent':
         return await generateAccountSecurityResponse(message, publicKey, connection, { getStats, getTrialStatus, isTrialActive });
@@ -111,7 +111,7 @@ export function UnifiedAIAgents(props: UnifiedAIAgentsProps) {
   };
 
   // Get initial messages and auto-messages for each agent
-  const getAgentConfig = () => {
+  const getAgentConfig = (): { name: string; initialMessage: string; icon: React.ReactNode; autoMessages?: Array<{ delay: number; content: string }> } => {
     const agent = enabledAgents.find(a => a.id === activeTab);
     if (!agent) return { name: 'AI Agent', initialMessage: 'Hello! How can I help?', icon: <Bot size={16} /> };
 

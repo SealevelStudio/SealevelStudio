@@ -4,7 +4,7 @@
 
 The AI agents currently use simple pattern matching and basic context from props. To make them significantly smarter and more contextually aware, here are the recommended improvements:
 
-## 1. **Integrate Real AI API (Claude/GPT-4)**
+## 1. **Integrate Real AI API (Claude/GPT-4/Gemini/DeepSeek)**
 
 ### Current Limitation
 - Agents use hardcoded response patterns
@@ -12,6 +12,8 @@ The AI agents currently use simple pattern matching and basic context from props
 - No learning or adaptation
 
 ### Solution: Add AI API Integration
+
+#### Option A: Anthropic Claude (Recommended for quality)
 
 ```typescript
 // app/lib/ai/api.ts
@@ -42,11 +44,173 @@ export async function generateAIResponse(
 }
 ```
 
+#### Option B: Google Gemini (Great balance of cost/quality)
+
+```typescript
+// app/lib/ai/gemini.ts
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+export async function generateAIResponseGemini(
+  systemPrompt: string,
+  userMessage: string,
+  context: Record<string, any>
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+  
+  const prompt = `${systemPrompt}\n\nUser: ${userMessage}\n\nContext: ${JSON.stringify(context, null, 2)}`;
+  
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+}
+```
+
+**Gemini Benefits:**
+- Very cost-effective (often cheaper than Claude/GPT-4)
+- Excellent code understanding
+- Good context window (up to 1M tokens with Gemini 1.5 Pro)
+- Fast response times
+- Free tier available
+
+#### Option C: DeepSeek (Self-hosted option)
+
+If you have DeepSeek locally, you can set it up as a server:
+
+**1. Set up DeepSeek API Server**
+
+```bash
+# Install vLLM or similar inference server
+pip install vllm
+
+# Start DeepSeek server (example with vLLM)
+python -m vllm.entrypoints.openai.api_server \
+  --model /path/to/deepseek/model \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --api-key your-api-key
+```
+
+**2. Use OpenAI-compatible API**
+
+```typescript
+// app/lib/ai/deepseek.ts
+import OpenAI from 'openai';
+
+// DeepSeek server (OpenAI-compatible)
+const deepseek = new OpenAI({
+  baseURL: process.env.DEEPSEEK_API_URL || 'http://localhost:8000/v1',
+  apiKey: process.env.DEEPSEEK_API_KEY || 'your-api-key',
+});
+
+export async function generateAIResponseDeepSeek(
+  systemPrompt: string,
+  userMessage: string,
+  context: Record<string, any>
+): Promise<string> {
+  const completion = await deepseek.chat.completions.create({
+    model: 'deepseek-chat', // or your model name
+    messages: [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: `${userMessage}\n\nContext: ${JSON.stringify(context, null, 2)}`,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 2048,
+  });
+  
+  return completion.choices[0].message.content || '';
+}
+```
+
+**DeepSeek Server Setup Options:**
+
+1. **vLLM** (Fast, GPU-accelerated)
+   ```bash
+   pip install vllm
+   vllm serve deepseek-ai/deepseek-coder-6.7b-instruct \
+     --host 0.0.0.0 \
+     --port 8000
+   ```
+
+2. **Ollama** (Easy, CPU-friendly)
+   ```bash
+   # Install Ollama
+   curl -fsSL https://ollama.ai/install.sh | sh
+   
+   # Pull DeepSeek model
+   ollama pull deepseek-coder
+   
+   # Start server
+   ollama serve
+   ```
+
+3. **Text Generation Inference (TGI)** (Hugging Face)
+   ```bash
+   docker run --gpus all \
+     -p 8080:80 \
+     -v /path/to/models:/data \
+     ghcr.io/huggingface/text-generation-inference:latest \
+     --model-id deepseek-ai/deepseek-coder-6.7b-instruct
+   ```
+
+**DeepSeek Benefits:**
+- Complete privacy (data stays on your server)
+- No API costs
+- Full control over model and parameters
+- Can fine-tune for your specific use case
+- Works offline
+
+#### Option D: Unified AI Provider Interface
+
+Create a unified interface that supports all providers:
+
+```typescript
+// app/lib/ai/provider.ts
+export type AIProvider = 'claude' | 'gemini' | 'openai' | 'deepseek' | 'local';
+
+export interface AIProviderConfig {
+  provider: AIProvider;
+  apiKey?: string;
+  baseURL?: string;
+  model?: string;
+}
+
+export async function generateAIResponse(
+  systemPrompt: string,
+  userMessage: string,
+  context: Record<string, any>,
+  config: AIProviderConfig
+): Promise<string> {
+  switch (config.provider) {
+    case 'claude':
+      return generateWithClaude(systemPrompt, userMessage, context, config);
+    case 'gemini':
+      return generateWithGemini(systemPrompt, userMessage, context, config);
+    case 'deepseek':
+    case 'local':
+      return generateWithDeepSeek(systemPrompt, userMessage, context, config);
+    case 'openai':
+      return generateWithOpenAI(systemPrompt, userMessage, context, config);
+    default:
+      throw new Error(`Unsupported provider: ${config.provider}`);
+  }
+}
+```
+
 ### Benefits
 - Natural language understanding
 - Context-aware responses
 - Can handle complex queries
 - Learns from conversation history
+- **Choose based on your needs:**
+  - **Claude**: Best quality, great for complex reasoning
+  - **Gemini**: Best value, excellent code understanding
+  - **DeepSeek**: Best privacy, no API costs, full control
+  - **GPT-4**: Good balance, widely available
 
 ## 2. **Enhanced Context Collection**
 
@@ -398,9 +562,164 @@ Always:
 6. **Add function calling** for tool use
 7. **Test and iterate** based on user feedback
 
+## 12. **DeepSeek Server Deployment Guide**
+
+### Quick Start: Deploy DeepSeek on a Server
+
+#### Option 1: Using Ollama (Easiest)
+
+```bash
+# On your server
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull DeepSeek model
+ollama pull deepseek-coder
+
+# Start server (runs on port 11434)
+OLLAMA_HOST=0.0.0.0:11434 ollama serve
+
+# Or use systemd service
+sudo systemctl enable ollama
+sudo systemctl start ollama
+```
+
+**Client Configuration:**
+```typescript
+// Use Ollama's OpenAI-compatible API
+const ollama = new OpenAI({
+  baseURL: 'http://your-server-ip:11434/v1',
+  apiKey: 'ollama', // Ollama doesn't require real auth
+});
+```
+
+#### Option 2: Using vLLM (Best Performance)
+
+```bash
+# Install vLLM
+pip install vllm
+
+# Start server
+python -m vllm.entrypoints.openai.api_server \
+  --model deepseek-ai/deepseek-coder-6.7b-instruct \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.9
+```
+
+**Requirements:**
+- GPU with at least 8GB VRAM (for 6.7B model)
+- CUDA 11.8+
+- Python 3.8+
+
+#### Option 3: Using Docker (Isolated)
+
+```bash
+# Create docker-compose.yml
+version: '3.8'
+services:
+  deepseek:
+    image: vllm/vllm-openai:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/root/.cache/huggingface
+    environment:
+      - MODEL=deepseek-ai/deepseek-coder-6.7b-instruct
+    command: --host 0.0.0.0 --port 8000
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+```
+
+#### Security Considerations
+
+1. **Use HTTPS**: Set up nginx reverse proxy with SSL
+2. **API Key Authentication**: Implement proper auth
+3. **Rate Limiting**: Prevent abuse
+4. **Firewall**: Only expose necessary ports
+
+```nginx
+# nginx.conf example
+server {
+    listen 443 ssl;
+    server_name your-domain.com;
+    
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+    
+    location /v1/ {
+        proxy_pass http://localhost:8000/v1/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        
+        # Rate limiting
+        limit_req zone=api_limit burst=10 nodelay;
+    }
+}
+```
+
+#### Environment Variables
+
+```bash
+# .env.local
+DEEPSEEK_API_URL=http://your-server-ip:8000/v1
+DEEPSEEK_API_KEY=your-secure-api-key
+AI_PROVIDER=deepseek
+AI_MODEL=deepseek-coder
+```
+
+#### Monitoring
+
+```typescript
+// app/lib/ai/monitoring.ts
+export async function checkDeepSeekHealth(baseURL: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${baseURL}/health`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Fallback to another provider if DeepSeek is down
+export async function generateWithFallback(
+  prompt: string,
+  context: any
+): Promise<string> {
+  const providers = [
+    { type: 'deepseek', config: DEEPSEEK_CONFIG },
+    { type: 'gemini', config: GEMINI_CONFIG },
+    { type: 'claude', config: CLAUDE_CONFIG },
+  ];
+  
+  for (const provider of providers) {
+    try {
+      if (provider.type === 'deepseek' && !(await checkDeepSeekHealth(provider.config.baseURL))) {
+        continue;
+      }
+      return await generateAIResponse(prompt, context, provider.config);
+    } catch (error) {
+      console.error(`${provider.type} failed:`, error);
+      continue;
+    }
+  }
+  
+  throw new Error('All AI providers failed');
+}
+```
+
 ## Resources
 
 - [Anthropic Claude API Docs](https://docs.anthropic.com/)
+- [Google Gemini API Docs](https://ai.google.dev/docs)
+- [DeepSeek Models](https://huggingface.co/deepseek-ai)
+- [vLLM Documentation](https://docs.vllm.ai/)
+- [Ollama Documentation](https://ollama.ai/docs)
 - [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
 - [LangChain for Agent Orchestration](https://js.langchain.com/)
 - [Vector Embeddings Guide](https://platform.openai.com/docs/guides/embeddings)
