@@ -262,7 +262,7 @@ export class ArbitrageDetector {
     }
 
     // Find opportunities across different DEXs
-    for (const [pairKey, dexMap] of poolsByPairAndDEX.entries()) {
+    for (const [pairKey, dexMap] of Array.from(poolsByPairAndDEX.entries())) {
       const dexes = Array.from(dexMap.keys());
       
       // Need at least 2 different DEXs for cross-DEX arbitrage

@@ -121,7 +121,9 @@ export class X509Manager {
   async generateFingerprint(certData: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(certData);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    // Ensure data has a proper ArrayBuffer (not SharedArrayBuffer)
+    const dataBuffer = new Uint8Array(data).buffer;
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join(':');
   }

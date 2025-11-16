@@ -152,9 +152,10 @@ async function calculateVolume24h(
   // Use Birdeye for accurate volume if available
   if (birdeyeFetcher) {
     try {
-      const priceData = await birdeyeFetcher.fetchPrice(tokenMint);
-      if (priceData && priceData.volume24h) {
-        return priceData.volume24h;
+      // Use fetchMultiPrice to get price data including volume
+      const priceData = await birdeyeFetcher.fetchMultiPrice([tokenMint], 'raw');
+      if (priceData && priceData.length > 0 && priceData[0]?.volume24h) {
+        return priceData[0].volume24h;
       }
     } catch (error) {
       console.error('Failed to fetch Birdeye volume:', error);

@@ -71,7 +71,8 @@ export class MeteoraFetcher extends BasePoolFetcher {
           const standardAccounts = await connection.getProgramAccounts(programPubkey, {
             filters: [{ dataSize: 1024 }],
             dataSlice: { offset: 0, length: 1024 },
-          }, 'confirmed');
+            commitment: 'confirmed',
+          });
           
           accounts = standardAccounts.map(acc => ({
             pubkey: acc.pubkey.toString(),

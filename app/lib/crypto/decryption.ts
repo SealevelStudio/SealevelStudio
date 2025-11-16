@@ -14,7 +14,7 @@ export function base64Encode(data: string | Uint8Array): string {
   if (typeof data === 'string') {
     return btoa(data);
   }
-  return btoa(String.fromCharCode(...data));
+  return btoa(String.fromCharCode(...Array.from(data)));
 }
 
 export function base64Decode(encoded: string): string {
@@ -97,9 +97,13 @@ export async function aesDecrypt(
       : encryptedData;
     
     // Derive key using PBKDF2
+    // keyData is already a Uint8Array from TextEncoder, convert to ArrayBuffer
+    // Create a new ArrayBuffer to avoid SharedArrayBuffer issues
+    const keyBuffer = new Uint8Array(keyData).buffer;
+    
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
-      keyData,
+      keyBuffer,
       { name: 'PBKDF2' },
       false,
       ['deriveBits', 'deriveKey']
@@ -119,25 +123,28 @@ export async function aesDecrypt(
     );
 
     // Extract IV from encrypted data if not provided
+    // Ensure all Uint8Arrays have proper ArrayBuffers (not SharedArrayBuffer)
     let ivData: Uint8Array;
     let ciphertext: Uint8Array;
     
     if (iv) {
-      ivData = typeof iv === 'string' ? hexDecodeToBytes(iv) : iv;
-      ciphertext = encrypted;
+      const ivBytes = typeof iv === 'string' ? hexDecodeToBytes(iv) : iv;
+      // Create new Uint8Array with new buffer to avoid SharedArrayBuffer issues
+      ivData = new Uint8Array(Array.from(ivBytes));
+      ciphertext = new Uint8Array(Array.from(encrypted));
     } else {
       // Assume IV is prepended (12 bytes for GCM)
-      ivData = encrypted.slice(0, 12);
-      ciphertext = encrypted.slice(12);
+      ivData = new Uint8Array(Array.from(encrypted.slice(0, 12)));
+      ciphertext = new Uint8Array(Array.from(encrypted.slice(12)));
     }
 
     const decrypted = await crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
-        iv: ivData,
+        iv: ivData.buffer.slice(ivData.byteOffset, ivData.byteOffset + ivData.byteLength) as ArrayBuffer,
       },
       derivedKey,
-      ciphertext
+      ciphertext.buffer.slice(ciphertext.byteOffset, ciphertext.byteOffset + ciphertext.byteLength) as ArrayBuffer
     );
 
     return new TextDecoder().decode(decrypted);
@@ -226,7 +233,9 @@ export async function sha256(data: string | Uint8Array): Promise<string> {
   const bytes = typeof data === 'string' 
     ? new TextEncoder().encode(data) 
     : data;
-  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  // Ensure bytes has a proper ArrayBuffer (not SharedArrayBuffer)
+  const bytesBuffer = new Uint8Array(bytes).buffer;
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytesBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -235,7 +244,9 @@ export async function sha512(data: string | Uint8Array): Promise<string> {
   const bytes = typeof data === 'string' 
     ? new TextEncoder().encode(data) 
     : data;
-  const hashBuffer = await crypto.subtle.digest('SHA-512', bytes);
+  // Ensure bytes has a proper ArrayBuffer (not SharedArrayBuffer)
+  const bytesBuffer = new Uint8Array(bytes).buffer;
+  const hashBuffer = await crypto.subtle.digest('SHA-512', bytesBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }

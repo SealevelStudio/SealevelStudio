@@ -44,6 +44,13 @@ export class PoolScanner {
     }
   }
 
+  /**
+   * Get a fetcher by DEX protocol name
+   */
+  getFetcher(dex: DEXProtocol): PoolFetcher | undefined {
+    return this.fetchers.get(dex);
+  }
+
   async scan(connection: Connection): Promise<ScannerState> {
     if (this.state.isScanning) {
       return this.state;

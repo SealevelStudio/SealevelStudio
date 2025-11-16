@@ -165,9 +165,9 @@ export class TruthValidator {
     return {
       isValid,
       confidence: avgConfidence,
-      issues: [...new Set(allIssues)],
-      verifiedFacts: [...new Set(allVerifiedFacts)],
-      unverifiedClaims: [...new Set(allUnverifiedClaims)]
+      issues: Array.from(new Set(allIssues)),
+      verifiedFacts: Array.from(new Set(allVerifiedFacts)),
+      unverifiedClaims: Array.from(new Set(allUnverifiedClaims))
     };
   }
 

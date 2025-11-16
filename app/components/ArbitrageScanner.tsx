@@ -110,7 +110,8 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
           const birdeyeFetcher = scanner.getFetcher('birdeye');
           if (birdeyeFetcher) {
             const { BirdeyeOptimizer } = await import('@/app/lib/pools/birdeye-optimizer');
-            birdeyeOptimizer = new BirdeyeOptimizer(birdeyeFetcher);
+            // Type assertion - we know it's a BirdeyeFetcher when fetched with 'birdeye' key
+            birdeyeOptimizer = new BirdeyeOptimizer(birdeyeFetcher as any);
           }
         } catch (error) {
           console.error('Error initializing Birdeye optimizer:', error);

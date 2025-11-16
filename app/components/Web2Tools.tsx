@@ -55,6 +55,7 @@ function ToolCard({ title, description, icon, link, status = 'available', onNavi
 
 interface Web2ToolsProps {
   onBack?: () => void;
+  onNavigateToSocial?: () => void;
 }
 
 export function Web2Tools({ onBack, onNavigateToSocial }: Web2ToolsProps) {

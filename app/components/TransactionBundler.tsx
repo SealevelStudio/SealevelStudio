@@ -144,13 +144,12 @@ export function TransactionBundler({ onBack }: TransactionBundlerProps) {
       // Register created wallets
       if (createdWallets && createdWallets.length > 0) {
         for (const wallet of createdWallets) {
-          await walletRegistry.registerWallet({
-            publicKey: wallet.keypair.publicKey.toString(),
-            label: wallet.label || `Bundler Wallet ${Date.now()}`,
-            privateKey: Array.from(wallet.keypair.secretKey),
-            createdAt: new Date(),
-            source: 'bundler'
-          });
+          walletRegistry.registerWallet(
+            wallet.keypair.publicKey.toString(),
+            wallet.keypair,
+            wallet.label || `Bundler Wallet ${Date.now()}`,
+            ['bundler']
+          );
         }
       }
 

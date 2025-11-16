@@ -311,15 +311,11 @@ export class BirdeyeOptimizer {
         enriched.price = tokenAPrice / tokenBPrice;
       }
       
-      // Add OHLCV data if available
-      const ohlcvKey = `${pool.tokenA.mint}-${pool.tokenB.mint}-1m`;
-      const ohlcv = ohlcvData.get(ohlcvKey);
-      if (ohlcv) {
-        enriched.metadata = {
-          ...enriched.metadata,
-          ohlcv,
-        };
-      }
+      // Note: OHLCV data could be stored elsewhere if needed
+      // PoolData interface doesn't include metadata field
+      // If needed, extend PoolData type to include optional metadata
+      // const ohlcvKey = `${pool.tokenA.mint}-${pool.tokenB.mint}-1m`;
+      // const ohlcv = ohlcvData.get(ohlcvKey);
       
       // Add volume data from price cache
       const tokenAVolume = prices.get(pool.tokenA.mint)?.volume24h;
@@ -355,7 +351,7 @@ export class BirdeyeOptimizer {
     }
     
     // For each pair, compare prices across pools
-    for (const [pairKey, pairPools] of poolsByPair.entries()) {
+    for (const [pairKey, pairPools] of Array.from(poolsByPair.entries())) {
       if (pairPools.length < 2) continue;
       
       // Fetch OHLCV for accurate price comparison
