@@ -80,6 +80,36 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
       if (state.pools.length > 0) {
         const detector = new ArbitrageDetector(state.pools, config, connection);
         const detected = detector.detectOpportunities();
+        
+        // Also find unconventional opportunities via AI searcher
+        try {
+          const unconventional = await scanner.findUnconventionalOpportunities(connection);
+          // Convert unconventional opportunities to standard format
+          const converted: ArbitrageOpportunity[] = unconventional.map((opp: any) => {
+            const baseProfit = opp.estimatedProfit || 0;
+            const inputAmount = BigInt(1_000_000_000);
+            const profitInLamports = BigInt(Math.floor(baseProfit * 1e9));
+            const outputAmount = inputAmount + profitInLamports;
+            
+            return {
+              id: `unconventional-${opp.type}-${Date.now()}-${Math.random()}`,
+              path: opp.path,
+              profit: baseProfit,
+              profitPercent: baseProfit > 0 ? (baseProfit / 1) * 100 : 0,
+              inputAmount,
+              outputAmount,
+              gasEstimate: 10000,
+              netProfit: baseProfit - (10000 / 1e9),
+              confidence: opp.risk === 'low' ? 'high' as const : opp.risk === 'medium' ? 'medium' as const : 'low' as const,
+              steps: opp.path.steps || [],
+              timestamp: new Date(),
+            };
+          });
+          detected.push(...converted);
+        } catch (error) {
+          console.error('Error finding unconventional opportunities:', error);
+        }
+        
         setOpportunities(detected);
       }
     } catch (error) {

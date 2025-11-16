@@ -8,6 +8,9 @@ import { OrcaFetcher } from './fetchers/orca';
 import { JupiterFetcher } from './fetchers/jupiter';
 import { MeteoraFetcher } from './fetchers/meteora';
 import { LifinityFetcher } from './fetchers/lifinity';
+import { HeliusFetcher } from './fetchers/helius';
+import { BirdeyeFetcher } from './fetchers/birdeye';
+import { AISearcher } from './ai-searcher';
 
 export class PoolScanner {
   private fetchers: Map<DEXProtocol, PoolFetcher>;
@@ -30,6 +33,14 @@ export class PoolScanner {
     this.fetchers.set('jupiter', new JupiterFetcher());
     this.fetchers.set('meteora', new MeteoraFetcher());
     this.fetchers.set('lifinity', new LifinityFetcher());
+    
+    // Enhanced data source fetchers (optional, require API keys)
+    if (process.env.NEXT_PUBLIC_HELIUS_API_KEY) {
+      this.fetchers.set('helius', new HeliusFetcher());
+    }
+    if (process.env.NEXT_PUBLIC_BIRDEYE_API_KEY) {
+      this.fetchers.set('birdeye', new BirdeyeFetcher());
+    }
   }
 
   async scan(connection: Connection): Promise<ScannerState> {
@@ -66,6 +77,16 @@ export class PoolScanner {
       });
 
       await Promise.allSettled(fetchPromises);
+
+      // Enrich pool data with Birdeye if available
+      if (this.fetchers.has('birdeye')) {
+        const birdeyeFetcher = this.fetchers.get('birdeye') as BirdeyeFetcher;
+        const enrichmentPromises = allPools.map(pool => 
+          birdeyeFetcher.enrichPoolData(pool).catch(() => pool)
+        );
+        const enrichedPools = await Promise.all(enrichmentPromises);
+        allPools.splice(0, allPools.length, ...enrichedPools);
+      }
 
       // Update state
       this.state.pools = allPools;
@@ -132,6 +153,61 @@ export class PoolScanner {
       this.handleError(error, `refreshPool ${poolId}`);
     }
 
+    return null;
+  }
+
+  /**
+   * Get AI-powered unconventional opportunities
+   */
+  async findUnconventionalOpportunities(connection: Connection): Promise<any[]> {
+    if (this.state.pools.length === 0) {
+      return [];
+    }
+
+    const aiSearcher = new AISearcher(connection, this.state.pools);
+    return await aiSearcher.findUnconventionalOpportunities(this.state.config.minProfitThreshold);
+  }
+
+  /**
+   * Optimize routing for a specific arbitrage path
+   */
+  optimizeRoute(startToken: string, endToken: string, amount: bigint, connection: Connection): any {
+    if (this.state.pools.length === 0) {
+      return null;
+    }
+
+    const aiSearcher = new AISearcher(connection, this.state.pools);
+    const startTokenInfo = this.findTokenInfo(startToken);
+    const endTokenInfo = this.findTokenInfo(endToken);
+
+    if (!startTokenInfo || !endTokenInfo) {
+      return null;
+    }
+
+    return aiSearcher.optimizeRoute(startTokenInfo, endTokenInfo, amount);
+  }
+
+  /**
+   * Analyze market anomalies
+   */
+  async analyzeAnomalies(connection: Connection): Promise<any> {
+    if (this.state.pools.length === 0) {
+      return { anomalies: [] };
+    }
+
+    const aiSearcher = new AISearcher(connection, this.state.pools);
+    return await aiSearcher.analyzeAnomalies();
+  }
+
+  private findTokenInfo(mint: string): { mint: string; symbol: string; decimals: number } | null {
+    for (const pool of this.state.pools) {
+      if (pool.tokenA.mint === mint) {
+        return pool.tokenA;
+      }
+      if (pool.tokenB.mint === mint) {
+        return pool.tokenB;
+      }
+    }
     return null;
   }
 

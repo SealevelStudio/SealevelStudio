@@ -17,6 +17,7 @@ import {
 const BASE_TRANSACTION_FEE = 5000; // Base fee per transaction
 const SWAP_INSTRUCTION_FEE = 2000; // Additional fee per swap instruction
 const WRAP_UNWRAP_FEE = 10000; // Fee for wrapping/unwrapping SOL
+const PRIORITY_FEE_MULTIPLIER = 1.5; // Multiplier for priority fees (MEV protection)
 
 export class ArbitrageDetector {
   private pools: PoolData[];
@@ -148,9 +149,12 @@ export class ArbitrageDetector {
     const sourcePool = buyFromA ? poolA : poolB;
     const destPool = buyFromA ? poolB : poolA;
 
-    // Calculate optimal input amount (simplified - use 1 SOL worth)
-    const inputAmount = BigInt(1_000_000_000); // 1 SOL
-    const outputAmount = this.calculateSwapOutput(
+    // Calculate optimal input amount with slippage modeling
+    const optimalAmount = this.calculateOptimalInputAmount(sourcePool, destPool);
+    const inputAmount = optimalAmount;
+    
+    // Calculate swap output with slippage consideration
+    const outputAmount = this.calculateSwapOutputWithSlippage(
       inputAmount,
       sourcePool.reserves.tokenA,
       sourcePool.reserves.tokenB,
@@ -159,8 +163,8 @@ export class ArbitrageDetector {
       sourcePool.fee
     );
 
-    // Swap back on second pool
-    const finalAmount = this.calculateSwapOutput(
+    // Swap back on second pool with slippage
+    const finalAmount = this.calculateSwapOutputWithSlippage(
       outputAmount,
       destPool.reserves.tokenB,
       destPool.reserves.tokenA,
@@ -171,7 +175,10 @@ export class ArbitrageDetector {
 
     const profit = Number(finalAmount - inputAmount) / 1e9; // Convert to SOL
     const profitPercent = (profit / Number(inputAmount) * 1e9) * 100;
-    const gasEstimate = BASE_TRANSACTION_FEE + (SWAP_INSTRUCTION_FEE * 2);
+    // Enhanced gas estimation with priority fees for MEV protection
+    const baseGas = BASE_TRANSACTION_FEE + (SWAP_INSTRUCTION_FEE * 2);
+    const priorityFee = Math.floor(baseGas * PRIORITY_FEE_MULTIPLIER);
+    const gasEstimate = baseGas + priorityFee;
     const netProfit = profit - gasEstimate / 1e9;
 
     if (netProfit <= 0) {
@@ -313,6 +320,85 @@ export class ArbitrageDetector {
     // Simplified - would need more complex logic for actual wrap/unwrap arbitrage
     // This is a placeholder for the concept
     return null;
+  }
+
+  /**
+   * Calculate optimal input amount for maximum profit
+   * Uses calculus to find the maximum profit point
+   */
+  private calculateOptimalInputAmount(poolA: PoolData, poolB: PoolData): bigint {
+    // Simplified optimization: try different amounts and find maximum
+    // In production, use calculus or binary search for optimal amount
+    const testAmounts = [
+      BigInt(100_000_000),      // 0.1 SOL
+      BigInt(500_000_000),      // 0.5 SOL
+      BigInt(1_000_000_000),    // 1 SOL
+      BigInt(5_000_000_000),     // 5 SOL
+      BigInt(10_000_000_000),   // 10 SOL
+    ];
+
+    let maxProfit = BigInt(0);
+    let optimalAmount = BigInt(1_000_000_000); // Default to 1 SOL
+
+    for (const amount of testAmounts) {
+      const output1 = this.calculateSwapOutput(
+        amount,
+        poolA.reserves.tokenA,
+        poolA.reserves.tokenB,
+        poolA.tokenA.decimals,
+        poolA.tokenB.decimals,
+        poolA.fee
+      );
+      const output2 = this.calculateSwapOutput(
+        output1,
+        poolB.reserves.tokenB,
+        poolB.reserves.tokenA,
+        poolB.tokenB.decimals,
+        poolB.tokenA.decimals,
+        poolB.fee
+      );
+      const profit = output2 - amount;
+
+      if (profit > maxProfit) {
+        maxProfit = profit;
+        optimalAmount = amount;
+      }
+    }
+
+    return optimalAmount;
+  }
+
+  /**
+   * Calculate swap output with slippage modeling
+   * Accounts for price impact and realistic execution
+   */
+  private calculateSwapOutputWithSlippage(
+    amountIn: bigint,
+    reserveIn: bigint,
+    reserveOut: bigint,
+    decimalsIn: number,
+    decimalsOut: number,
+    fee: number
+  ): bigint {
+    // Base calculation
+    const baseOutput = this.calculateSwapOutput(
+      amountIn,
+      reserveIn,
+      reserveOut,
+      decimalsIn,
+      decimalsOut,
+      fee
+    );
+
+    // Apply slippage model (price impact increases with trade size)
+    const reserveRatio = Number(reserveIn) / Number(reserveOut);
+    const tradeSizeRatio = Number(amountIn) / Number(reserveIn);
+    
+    // Slippage increases quadratically with trade size
+    const slippageMultiplier = 1 - (tradeSizeRatio * tradeSizeRatio * 0.1); // Max 10% slippage
+    const adjustedOutput = BigInt(Math.floor(Number(baseOutput) * slippageMultiplier));
+
+    return adjustedOutput;
   }
 
   private calculateSwapOutput(

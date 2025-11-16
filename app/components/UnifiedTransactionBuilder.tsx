@@ -954,7 +954,8 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       if (additionalSigners.length > 0) {
         const mintPubkey = additionalSigners[0].publicKey.toString();
         addLog(`Created mint address: ${mintPubkey}`, 'success');
-        addLog(`Mint keypair secret key (for R&D): [REDACTED - stored in transaction]`, 'info');
+        addLog(`Mint keypair generated (secret key stored securely in transaction for signing)`, 'info');
+        addLog(`⚠️ For R&D: The mint keypair secret key is in the transaction object but not logged for security.`, 'warning');
       }
       
       setBuiltTransaction(null);
