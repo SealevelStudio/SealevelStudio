@@ -31,6 +31,7 @@ import {
   DEFAULT_SCANNER_CONFIG,
   DEXProtocol,
 } from '../lib/pools/types';
+import { ScannerAgent } from './ScannerAgent';
 
 interface ArbitrageScannerProps {
   onBuildTransaction?: (opportunity: ArbitrageOpportunity) => void;
@@ -169,7 +170,15 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-900 text-white">
+    <>
+      <ScannerAgent
+        opportunities={opportunities}
+        pools={pools}
+        selectedOpportunity={selectedOpportunity}
+        onSelectOpportunity={setSelectedOpportunity}
+        onBuildTransaction={handleBuildTransaction}
+      />
+      <div className="h-full flex flex-col bg-slate-900 text-white">
       {/* Header */}
       <div className="border-b border-slate-800 p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -520,6 +529,7 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
         </div>
       )}
     </div>
+    </>
   );
 }
 

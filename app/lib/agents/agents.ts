@@ -26,6 +26,14 @@ export const AVAILABLE_AGENTS: Agent[] = [
     color: 'bg-yellow-600',
     enabled: false, // Coming soon
   },
+  {
+    id: 'scanner-agent',
+    name: 'Scanner AI Agent',
+    description: 'Analyzes arbitrage opportunities, calculates risk/reward, suggests strategies',
+    icon: '🔍',
+    color: 'bg-teal-600',
+    enabled: true,
+  },
 ];
 
 export function getAgentById(id: string): Agent | undefined {
