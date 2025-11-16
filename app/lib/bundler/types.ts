@@ -30,6 +30,7 @@ export interface MultiSendResult {
     rentExempt: number; // For new accounts
     total: number;
   };
+  createdWalletIds?: string[]; // IDs of wallets registered in wallet manager
 }
 
 export interface MultiSendEstimate {

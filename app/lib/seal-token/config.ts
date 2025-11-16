@@ -103,10 +103,10 @@ export const SEAL_TOKEN_ECONOMICS = {
   
   // Beta tester perks
   beta_tester: {
-    airdrop_amount: 10000, // 10,000 SEAL airdrop on attestation mint
+    airdrop_amount: 10000, // 10,000 SEAL airdrop (reserved on mint, claimable with cNFT)
     discount_percentage: 25, // 25% discount on all services
     free_bundler_transactions: 5, // 5 free multi-send transactions
-    free_market_maker_month: 1, // 1 free month of market maker
+    // Removed: free_market_maker_month (no longer offered)
     free_bot_setup: true, // Free bot setup (one-time)
   },
   

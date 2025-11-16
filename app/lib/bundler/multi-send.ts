@@ -13,6 +13,7 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import { MultiSendConfig, MultiSendResult, MultiSendEstimate, MultiSendRecipient } from './types';
+import { walletRegistry } from '../wallet-manager';
 
 const MAX_RECIPIENTS = 50;
 const MAX_TRANSACTION_SIZE = 1232; // Solana transaction size limit
@@ -117,6 +118,7 @@ export async function buildMultiSendTransaction(
 
   const rentExempt = await connection.getMinimumBalanceForRentExemption(0);
   let accountsCreated = 0;
+  const createdWallets: Array<{ keypair: Keypair; label?: string }> = [];
 
   // Process each recipient
   for (const recipient of config.recipients) {
@@ -129,6 +131,8 @@ export async function buildMultiSendTransaction(
       signers.push(newKeypair);
       recipientPubkey = newKeypair.publicKey;
       shouldCreateAccount = true;
+      // Store for registration
+      createdWallets.push({ keypair: newKeypair, label: recipient.label });
     } else {
       try {
         recipientPubkey = new PublicKey(recipient.address);
@@ -146,6 +150,8 @@ export async function buildMultiSendTransaction(
         signers.push(newKeypair);
         recipientPubkey = newKeypair.publicKey;
         shouldCreateAccount = true;
+        // Store for registration
+        createdWallets.push({ keypair: newKeypair, label: recipient.label });
       }
     }
     
@@ -196,7 +202,7 @@ export async function buildMultiSendTransaction(
     transaction.add(memoInstruction);
   }
 
-  return { transaction, signers, estimate };
+  return { transaction, signers, estimate, createdWallets };
 }
 
 /**
@@ -212,7 +218,7 @@ export async function executeMultiSend(
   }
 
   // Build transaction
-  const { transaction, signers, estimate } = await buildMultiSendTransaction(
+  const { transaction, signers, estimate, createdWallets } = await buildMultiSendTransaction(
     connection,
     wallet.publicKey,
     config
@@ -247,6 +253,15 @@ export async function executeMultiSend(
     'confirmed'
   );
 
+  // Register created wallets in wallet manager
+  for (const { keypair, label } of createdWallets) {
+    walletRegistry.registerWallet(
+      keypair.publicKey.toString(),
+      keypair,
+      label || `Bundler Wallet ${new Date().toLocaleString()}`
+    );
+  }
+
   const totalAmount = config.recipients.reduce((sum, r) => sum + r.amount, 0);
   const rentExempt = await connection.getMinimumBalanceForRentExemption(0);
   const accountsCreated = estimate.accountsToCreate;
@@ -263,6 +278,9 @@ export async function executeMultiSend(
       rentExempt: (accountsCreated * rentExempt) / LAMPORTS_PER_SOL,
       total: estimate.totalFees,
     },
+    createdWalletIds: createdWallets.map(w => 
+      walletRegistry.getWalletByAddress(w.keypair.publicKey.toString())?.id
+    ).filter(Boolean) as string[],
   };
 }
 
