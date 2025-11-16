@@ -36,6 +36,7 @@ import { getTemplateById, getTemplatesByCategory } from '../lib/instructions/tem
 import { BuiltInstruction, TransactionDraft, InstructionTemplate } from '../lib/instructions/types';
 import { PublicKey } from '@solana/web3.js';
 import { TransactionAgent } from './TransactionAgent';
+import { SimulatorAgent } from './SimulatorAgent';
 import { ArbitragePanel } from './ArbitragePanel';
 import { ArbitrageOpportunity } from '../lib/pools/types';
 
@@ -1645,7 +1646,12 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         )}
       </div>
 
-      {/* AI Agent */}
+      {/* AI Agents */}
+      <SimulatorAgent
+        transaction={builtTransaction}
+        workflow={viewMode === 'simple' ? simpleWorkflow : []}
+        transactionDraft={viewMode === 'advanced' ? transactionDraft : undefined}
+      />
       <TransactionAgent
         simpleWorkflow={viewMode === 'simple' ? simpleWorkflow : []}
         transactionDraft={viewMode === 'advanced' ? transactionDraft : undefined}

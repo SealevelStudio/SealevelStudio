@@ -34,6 +34,14 @@ export const AVAILABLE_AGENTS: Agent[] = [
     color: 'bg-teal-600',
     enabled: true,
   },
+  {
+    id: 'simulator-agent',
+    name: 'Simulator AI Agent',
+    description: 'Predicts transaction outcomes, optimizes compute units, detects failures',
+    icon: '🎭',
+    color: 'bg-cyan-600',
+    enabled: true,
+  },
 ];
 
 export function getAgentById(id: string): Agent | undefined {
