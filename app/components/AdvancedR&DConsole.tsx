@@ -125,12 +125,12 @@ const COMMAND_HELP: CommandHelp[] = [
   },
 ];
 
-interface AdvancedR&DConsoleProps {
+interface AdvancedRAndDConsoleProps {
   initialMinimized?: boolean;
   onToggle?: (minimized: boolean) => void;
 }
 
-export function AdvancedR&DConsole({ initialMinimized = false, onToggle }: AdvancedR&DConsoleProps = {}) {
+export function AdvancedRAndDConsole({ initialMinimized = false, onToggle }: AdvancedRAndDConsoleProps) {
   const [commands, setCommands] = useState<Command[]>([]);
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -277,7 +277,11 @@ export function AdvancedR&DConsole({ initialMinimized = false, onToggle }: Advan
           const data = args.join(' ');
           try {
             const tx = decodeTransaction(data);
-            const signatures = tx.signatures.map(sig => sig.toString('base64'));
+            const signatures = tx.signatures.map(sig => {
+              // sig is SignaturePubkeyPair, access the signature property
+              const sigBytes = 'signature' in sig ? sig.signature : (sig as any);
+              return Buffer.from(sigBytes).toString('base64');
+            });
             const instructions = tx.instructions.map((ix, i) => 
               `Instruction ${i}: Program ${ix.programId.toString()}, Accounts: ${ix.keys.length}`
             );

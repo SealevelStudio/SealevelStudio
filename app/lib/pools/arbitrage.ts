@@ -35,12 +35,26 @@ export class ArbitrageDetector {
   async detectOpportunities(): Promise<ArbitrageOpportunity[]> {
     const opportunities: ArbitrageOpportunity[] = [];
 
+    // Filter out Jupiter pools - Jupiter is an aggregator, not a real pool
+    // We only want direct DEX pools with actual reserves for arbitrage detection
+    const realPools = this.pools.filter(p => 
+      p.dex !== 'jupiter' && 
+      p.reserves.tokenA > BigInt(0) && 
+      p.reserves.tokenB > BigInt(0) &&
+      p.poolAddress // Must have on-chain address
+    );
+
+    if (realPools.length === 0) {
+      console.warn('No real pools with reserves found for arbitrage detection');
+      return [];
+    }
+
     // Use Birdeye optimizer for enhanced detection if available
     if (this.birdeyeOptimizer) {
       try {
         // Find opportunities using Birdeye's optimized price data
         const birdeyeOpportunities = await this.birdeyeOptimizer.findArbitrageOpportunities(
-          this.pools,
+          realPools,
           this.config.minProfitPercent
         );
         
@@ -56,23 +70,28 @@ export class ArbitrageDetector {
       }
     }
 
-    // Fallback to standard detection methods
-    // 1. Simple 2-pool arbitrage
-    opportunities.push(...this.detectSimpleArbitrage());
+    // Direct on-chain arbitrage detection methods (better than Jupiter API calls)
+    // 1. Simple 2-pool arbitrage (same token pair, different DEXs)
+    opportunities.push(...this.detectSimpleArbitrage(realPools));
 
-    // 2. Multi-hop arbitrage
-    opportunities.push(...this.detectMultiHopArbitrage());
+    // 2. Multi-hop arbitrage (token cycles across pools)
+    opportunities.push(...this.detectMultiHopArbitrage(realPools));
 
-    // 3. Wrapping/unwrapping arbitrage
-    opportunities.push(...this.detectWrapUnwrapArbitrage());
+    // 3. Wrapping/unwrapping arbitrage (SOL <-> wSOL price differences)
+    opportunities.push(...this.detectWrapUnwrapArbitrage(realPools));
+
+    // 4. Cross-DEX arbitrage (same pair on different DEXs with price differences)
+    opportunities.push(...this.detectCrossDEXArbitrage(realPools));
 
     // Remove duplicates and filter by minimum thresholds
     const uniqueOpportunities = this.deduplicateOpportunities(opportunities);
-    return uniqueOpportunities.filter(
-      opp =>
-        opp.netProfit >= this.config.minProfitThreshold &&
-        opp.profitPercent >= this.config.minProfitPercent
-    );
+    return uniqueOpportunities
+      .filter(
+        opp =>
+          opp.netProfit >= this.config.minProfitThreshold &&
+          opp.profitPercent >= this.config.minProfitPercent
+      )
+      .sort((a, b) => b.netProfit - a.netProfit); // Sort by profit descending
   }
 
   private deduplicateOpportunities(opportunities: ArbitrageOpportunity[]): ArbitrageOpportunity[] {
@@ -85,13 +104,18 @@ export class ArbitrageDetector {
     });
   }
 
-  private detectSimpleArbitrage(): ArbitrageOpportunity[] {
+  private detectSimpleArbitrage(pools: PoolData[] = this.pools): ArbitrageOpportunity[] {
     const opportunities: ArbitrageOpportunity[] = [];
 
-    // Group pools by token pair
+    // Group pools by token pair (only real pools with reserves)
     const poolsByPair = new Map<string, PoolData[]>();
     
-    for (const pool of this.pools) {
+    for (const pool of pools) {
+      // Skip pools without valid reserves or addresses
+      if (!pool.poolAddress || pool.reserves.tokenA === BigInt(0) || pool.reserves.tokenB === BigInt(0)) {
+        continue;
+      }
+      
       const pairKey = this.getPairKey(pool.tokenA.mint, pool.tokenB.mint);
       if (!poolsByPair.has(pairKey)) {
         poolsByPair.set(pairKey, []);
@@ -99,20 +123,30 @@ export class ArbitrageDetector {
       poolsByPair.get(pairKey)!.push(pool);
     }
 
-    // Find price differences for same token pairs
-    for (const [pairKey, pools] of Array.from(poolsByPair.entries())) {
-      if (pools.length < 2) continue;
+    // Find price differences for same token pairs across different DEXs
+    for (const [pairKey, pairPools] of Array.from(poolsByPair.entries())) {
+      if (pairPools.length < 2) continue;
 
-      // Compare all pairs of pools
-      for (let i = 0; i < pools.length; i++) {
-        for (let j = i + 1; j < pools.length; j++) {
-          const poolA = pools[i];
-          const poolB = pools[j];
+      // Compare all pairs of pools (prefer different DEXs for better arbitrage)
+      for (let i = 0; i < pairPools.length; i++) {
+        for (let j = i + 1; j < pairPools.length; j++) {
+          const poolA = pairPools[i];
+          const poolB = pairPools[j];
+
+          // Prefer cross-DEX arbitrage (different DEXs = better opportunity)
+          if (poolA.dex === poolB.dex && pairPools.length > 2) {
+            // Skip same-DEX pairs if we have cross-DEX options
+            continue;
+          }
+
+          // Calculate actual price from reserves (more accurate than stored price)
+          const priceA = this.calculatePriceFromReserves(poolA);
+          const priceB = this.calculatePriceFromReserves(poolB);
 
           // Check if prices differ significantly
-          const priceDiff = Math.abs(poolA.price - poolB.price);
-          const avgPrice = (poolA.price + poolB.price) / 2;
-          const priceDiffPercent = (priceDiff / avgPrice) * 100;
+          const priceDiff = Math.abs(priceA - priceB);
+          const avgPrice = (priceA + priceB) / 2;
+          const priceDiffPercent = avgPrice > 0 ? (priceDiff / avgPrice) * 100 : 0;
 
           if (priceDiffPercent > this.config.minProfitPercent) {
             // Determine which direction is profitable
@@ -128,15 +162,36 @@ export class ArbitrageDetector {
     return opportunities;
   }
 
-  private detectMultiHopArbitrage(): ArbitrageOpportunity[] {
+  /**
+   * Calculate price directly from on-chain reserves (more accurate)
+   */
+  private calculatePriceFromReserves(pool: PoolData): number {
+    if (pool.reserves.tokenB === BigInt(0)) return 0;
+    
+    const adjustedA = Number(pool.reserves.tokenA) / Math.pow(10, pool.tokenA.decimals);
+    const adjustedB = Number(pool.reserves.tokenB) / Math.pow(10, pool.tokenB.decimals);
+    
+    return adjustedB / adjustedA;
+  }
+
+  private detectMultiHopArbitrage(pools: PoolData[] = this.pools): ArbitrageOpportunity[] {
     const opportunities: ArbitrageOpportunity[] = [];
     const maxHops = this.config.maxHops;
 
-    // Build graph of token connections
-    const graph = this.buildTokenGraph();
+    // Filter to only real pools with reserves
+    const realPools = pools.filter(p => 
+      p.poolAddress && 
+      p.reserves.tokenA > BigInt(0) && 
+      p.reserves.tokenB > BigInt(0)
+    );
+
+    // Build graph of token connections (only real pools)
+    const graph = this.buildTokenGraph(realPools);
 
     // Find cycles starting from each token
-    const tokens = Array.from(graph.keys()).slice(0, 20); // Limit to first 20 tokens for performance
+    // Focus on high-liquidity tokens first for better opportunities
+    const tokens = Array.from(graph.keys())
+      .slice(0, 30) // Limit to first 30 tokens for performance
     
     for (const startToken of tokens) {
       const cycles = this.findProfitableCycles(startToken, graph, maxHops);
@@ -146,28 +201,98 @@ export class ArbitrageDetector {
     return opportunities;
   }
 
-  private detectWrapUnwrapArbitrage(): ArbitrageOpportunity[] {
+  private detectWrapUnwrapArbitrage(pools: PoolData[] = this.pools): ArbitrageOpportunity[] {
     const opportunities: ArbitrageOpportunity[] = [];
 
-    // Find pools involving SOL and wSOL
-    const solPools = this.pools.filter(
-      p => p.tokenA.mint === WSOL_MINT || p.tokenB.mint === WSOL_MINT
-    );
-
-    const wsolPools = this.pools.filter(
+    // Find pools involving SOL and wSOL (only real pools)
+    const solPools = pools.filter(
       p => (p.tokenA.mint === WSOL_MINT || p.tokenB.mint === WSOL_MINT) &&
-           p.dex !== 'jupiter' // Jupiter handles wrapping automatically
+           p.poolAddress &&
+           p.reserves.tokenA > BigInt(0) &&
+           p.reserves.tokenB > BigInt(0)
     );
 
     // Check if wrapping/unwrapping creates arbitrage
-    for (const solPool of solPools) {
-      for (const wsolPool of wsolPools) {
-        if (solPool.id === wsolPool.id) continue;
+    // SOL and wSOL should be 1:1, but sometimes pools have slight price differences
+    for (let i = 0; i < solPools.length; i++) {
+      for (let j = i + 1; j < solPools.length; j++) {
+        const poolA = solPools[i];
+        const poolB = solPools[j];
+
+        if (poolA.id === poolB.id) continue;
 
         // Check SOL -> wSOL -> Token -> wSOL -> SOL path
-        const opportunity = this.calculateWrapUnwrapArbitrage(solPool, wsolPool);
+        const opportunity = this.calculateWrapUnwrapArbitrage(poolA, poolB);
         if (opportunity) {
           opportunities.push(opportunity);
+        }
+      }
+    }
+
+    return opportunities;
+  }
+
+  /**
+   * Detect cross-DEX arbitrage opportunities (same token pair on different DEXs)
+   * This is more efficient than Jupiter API calls
+   */
+  private detectCrossDEXArbitrage(pools: PoolData[] = this.pools): ArbitrageOpportunity[] {
+    const opportunities: ArbitrageOpportunity[] = [];
+
+    // Group by token pair and DEX
+    const poolsByPairAndDEX = new Map<string, Map<string, PoolData[]>>();
+    
+    for (const pool of pools) {
+      if (!pool.poolAddress || pool.reserves.tokenA === BigInt(0) || pool.reserves.tokenB === BigInt(0)) {
+        continue;
+      }
+
+      const pairKey = this.getPairKey(pool.tokenA.mint, pool.tokenB.mint);
+      
+      if (!poolsByPairAndDEX.has(pairKey)) {
+        poolsByPairAndDEX.set(pairKey, new Map());
+      }
+      
+      const dexMap = poolsByPairAndDEX.get(pairKey)!;
+      if (!dexMap.has(pool.dex)) {
+        dexMap.set(pool.dex, []);
+      }
+      
+      dexMap.get(pool.dex)!.push(pool);
+    }
+
+    // Find opportunities across different DEXs
+    for (const [pairKey, dexMap] of poolsByPairAndDEX.entries()) {
+      const dexes = Array.from(dexMap.keys());
+      
+      // Need at least 2 different DEXs for cross-DEX arbitrage
+      if (dexes.length < 2) continue;
+
+      // Compare pools across different DEXs
+      for (let i = 0; i < dexes.length; i++) {
+        for (let j = i + 1; j < dexes.length; j++) {
+          const poolsA = dexMap.get(dexes[i])!;
+          const poolsB = dexMap.get(dexes[j])!;
+
+          // Compare best pools from each DEX
+          for (const poolA of poolsA) {
+            for (const poolB of poolsB) {
+              const priceA = this.calculatePriceFromReserves(poolA);
+              const priceB = this.calculatePriceFromReserves(poolB);
+              
+              const priceDiff = Math.abs(priceA - priceB);
+              const avgPrice = (priceA + priceB) / 2;
+              const priceDiffPercent = avgPrice > 0 ? (priceDiff / avgPrice) * 100 : 0;
+
+              if (priceDiffPercent > this.config.minProfitPercent) {
+                const opportunity = this.calculateSimpleArbitrage(poolA, poolB);
+                if (opportunity) {
+                  opportunity.type = 'cross_protocol';
+                  opportunities.push(opportunity);
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -465,10 +590,15 @@ export class ArbitrageDetector {
     return numerator / denominator;
   }
 
-  private buildTokenGraph(): Map<string, Map<string, PoolData[]>> {
+  private buildTokenGraph(pools: PoolData[] = this.pools): Map<string, Map<string, PoolData[]>> {
     const graph = new Map<string, Map<string, PoolData[]>>();
 
-    for (const pool of this.pools) {
+    // Only include real pools with reserves
+    for (const pool of pools) {
+      if (!pool.poolAddress || pool.reserves.tokenA === BigInt(0) || pool.reserves.tokenB === BigInt(0)) {
+        continue;
+      }
+
       const tokenA = pool.tokenA.mint;
       const tokenB = pool.tokenB.mint;
 

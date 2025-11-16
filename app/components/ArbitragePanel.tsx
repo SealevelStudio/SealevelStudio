@@ -33,7 +33,7 @@ export function ArbitragePanel({ onSelectOpportunity, onClose }: ArbitragePanelP
 
       if (state.pools.length > 0) {
         const detector = new ArbitrageDetector(state.pools, config, connection);
-        const detected = detector.detectOpportunities();
+        const detected = await detector.detectOpportunities();
         // Show top 5 opportunities
         setOpportunities(detected.slice(0, 5));
       }

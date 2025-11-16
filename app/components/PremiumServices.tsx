@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Layers, TrendingUp, MessageSquare, Wallet, Zap, ArrowRight, ArrowLeft, Clock } from 'lucide-react';
+import { Layers, TrendingUp, MessageSquare, Wallet, Zap, ArrowRight, ArrowLeft, Clock, Sparkles } from 'lucide-react';
 
 interface ServiceCardProps {
   title: string;
@@ -95,10 +95,27 @@ function ServiceCard({ title, description, icon, cost, link, features, available
 interface PremiumServicesProps {
   onBack?: () => void;
   onNavigateToWalletManager?: () => void;
+  onNavigateToServiceBot?: () => void;
+  onNavigateToBundler?: () => void;
+  onNavigateToAdvertising?: () => void;
 }
 
-export function PremiumServices({ onBack, onNavigateToWalletManager, onNavigateToBundler, onNavigateToAdvertising }: PremiumServicesProps) {
+export function PremiumServices({ onBack, onNavigateToWalletManager, onNavigateToBundler, onNavigateToAdvertising, onNavigateToServiceBot }: PremiumServicesProps) {
   const services = [
+    {
+      title: 'AI Service Bot',
+      description: 'Intelligent AI assistant powered by OpenAI for Solana development help',
+      icon: <Sparkles size={24} />,
+      cost: 'Free',
+      link: '/premium/service-bot',
+      available: true, // Available
+      features: [
+        'Solana development questions',
+        'Code explanations & debugging',
+        'Platform feature guidance',
+        'Security best practices',
+      ],
+    },
     {
       title: 'Transaction Bundler',
       description: 'Multi-send SOL to up to 50 wallets, creating accounts automatically',
@@ -183,6 +200,7 @@ export function PremiumServices({ onBack, onNavigateToWalletManager, onNavigateT
               key={service.title} 
               {...service}
               onNavigate={
+                service.title === 'AI Service Bot' ? onNavigateToServiceBot :
                 service.title === 'Wallet Manager' ? onNavigateToWalletManager :
                 service.title === 'Transaction Bundler' ? onNavigateToBundler :
                 service.title === 'Advertising Bots' ? onNavigateToAdvertising :

@@ -113,15 +113,37 @@ export async function fetchAllProgramAccountsV2(
         const pubkey = acc.pubkey || acc.accountId || (typeof acc === 'string' ? acc : null);
         const accountData = acc.account || acc;
         
-        // Handle parsed vs raw data
+        // Handle parsed vs raw data based on encoding
         let data: any;
         if (accountData?.data) {
           // jsonParsed encoding returns parsed data
-          if (typeof accountData.data === 'object' && accountData.data.parsed) {
+          if (encoding === 'jsonParsed' && typeof accountData.data === 'object' && accountData.data.parsed) {
             data = accountData.data;
-          } else if (accountData.data instanceof Uint8Array || (typeof Buffer !== 'undefined' && Buffer.isBuffer(accountData.data))) {
+          } 
+          // base64 encoding returns string that needs to be converted to Buffer
+          else if (encoding === 'base64' && typeof accountData.data === 'string') {
+            // Convert base64 string to Buffer
+            if (typeof Buffer !== 'undefined') {
+              data = Buffer.from(accountData.data, 'base64');
+            } else {
+              // Browser environment - use Uint8Array
+              const binaryString = atob(accountData.data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              data = bytes;
+            }
+          }
+          // Already a Buffer or Uint8Array
+          else if (accountData.data instanceof Uint8Array || (typeof Buffer !== 'undefined' && Buffer.isBuffer(accountData.data))) {
             data = accountData.data;
-          } else {
+          } 
+          // Array format (base58 or other)
+          else if (Array.isArray(accountData.data)) {
+            data = new Uint8Array(accountData.data);
+          }
+          else {
             data = accountData.data;
           }
         } else {
@@ -240,15 +262,37 @@ export async function fetchAllProgramAccountsV2WithProgress(
         const pubkey = acc.pubkey || acc.accountId || (typeof acc === 'string' ? acc : null);
         const accountData = acc.account || acc;
         
-        // Handle parsed vs raw data
+        // Handle parsed vs raw data based on encoding
         let data: any;
         if (accountData?.data) {
           // jsonParsed encoding returns parsed data
-          if (typeof accountData.data === 'object' && accountData.data.parsed) {
+          if (encoding === 'jsonParsed' && typeof accountData.data === 'object' && accountData.data.parsed) {
             data = accountData.data;
-          } else if (accountData.data instanceof Uint8Array || (typeof Buffer !== 'undefined' && Buffer.isBuffer(accountData.data))) {
+          } 
+          // base64 encoding returns string that needs to be converted to Buffer
+          else if (encoding === 'base64' && typeof accountData.data === 'string') {
+            // Convert base64 string to Buffer
+            if (typeof Buffer !== 'undefined') {
+              data = Buffer.from(accountData.data, 'base64');
+            } else {
+              // Browser environment - use Uint8Array
+              const binaryString = atob(accountData.data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              data = bytes;
+            }
+          }
+          // Already a Buffer or Uint8Array
+          else if (accountData.data instanceof Uint8Array || (typeof Buffer !== 'undefined' && Buffer.isBuffer(accountData.data))) {
             data = accountData.data;
-          } else {
+          } 
+          // Array format (base58 or other)
+          else if (Array.isArray(accountData.data)) {
+            data = new Uint8Array(accountData.data);
+          }
+          else {
             data = accountData.data;
           }
         } else {

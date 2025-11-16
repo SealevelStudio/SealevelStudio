@@ -53,7 +53,7 @@ export class PoolScanner {
     this.state.errors = [];
 
     try {
-      const allPools: PoolData[] = [];
+      let allPools: PoolData[] = [];
       const enabledDEXs = this.state.config.enabledDEXs;
 
       // Fetch pools from each enabled DEX

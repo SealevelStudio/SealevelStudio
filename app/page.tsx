@@ -20,7 +20,7 @@ import { LandingPage } from './components/LandingPage';
 import { PremiumServices } from './components/PremiumServices';
 import { Web2Tools } from './components/Web2Tools';
 import { WalletManager } from './components/WalletManager';
-import { AdvancedR&DConsole } from './components/AdvancedR&DConsole';
+import { AdvancedRAndDConsole } from './components/AdvancedR&DConsole';
 import { CybersecurityFinder } from './components/CybersecurityFinder';
 import { SecurityAI } from './components/SecurityAI';
 import { CybersecurityDashboard } from './components/CybersecurityDashboard';
@@ -28,6 +28,7 @@ import { DocsView } from './components/DocsView';
 import { TransactionBundler } from './components/TransactionBundler';
 import { AdvertisingBots } from './components/AdvertisingBots';
 import { SocialFeatures } from './components/SocialFeatures';
+import { ServiceBot } from './components/ServiceBot';
 
 // Suppress hydration warnings during development
 if (typeof window !== 'undefined') {
@@ -776,6 +777,7 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
       onNavigateToWalletManager={() => setActiveView('wallets')}
       onNavigateToBundler={() => setActiveView('bundler')}
       onNavigateToAdvertising={() => setActiveView('advertising')}
+      onNavigateToServiceBot={() => setActiveView('service-bot')}
     />;
   }
 
@@ -787,6 +789,11 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
   // Advertising Bots has its own full-screen layout
   if (activeView === 'advertising') {
     return <AdvertisingBots onBack={() => setActiveView('premium')} />;
+  }
+
+  // Service Bot has its own full-screen layout
+  if (activeView === 'service-bot') {
+    return <ServiceBot onBack={() => setActiveView('premium')} />;
   }
 
   // Web2 Tools has its own full-screen layout
@@ -915,7 +922,7 @@ export default function App() {
   }
 
   // Main app interface
-  const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social';
+  const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot';
   const [rdConsoleMinimized, setRdConsoleMinimized] = useState(true);
   
   // Open console when nav item is clicked
@@ -956,7 +963,7 @@ export default function App() {
       <UnifiedAIAgents />
       
       {/* R&D Console - Floating (always available) */}
-      <AdvancedR&DConsole 
+      <AdvancedRAndDConsole 
         initialMinimized={rdConsoleMinimized}
         onToggle={setRdConsoleMinimized}
       />

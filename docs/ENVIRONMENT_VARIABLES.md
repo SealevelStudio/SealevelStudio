@@ -51,13 +51,15 @@ These are prefixed with `NEXT_PUBLIC_` and **will be exposed to the browser**. O
 |----------|----------|-------------|
 | `NEXT_PUBLIC_HELIUS_API_KEY` | No | Helius API key for client-side pool fetching |
 | `NEXT_PUBLIC_BIRDEYE_API_KEY` | No | Birdeye API key for client-side price fetching |
+| `QUICKNODE_API_KEY` | No | QuickNode API key for WebSocket streaming and RPC access |
+| `QUICKNODE_ENDPOINT` | No | QuickNode endpoint (e.g., `your-endpoint.solana-mainnet.quiknode.pro`) |
 
 ### WebSocket URLs
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_HELIUS_WS_URL` | No | Helius WebSocket URL for real-time updates |
-| `NEXT_PUBLIC_BIRDEYE_WS_URL` | No | Birdeye WebSocket URL for real-time updates |
+| `NEXT_PUBLIC_QUICKNODE_WS_URL` | No | QuickNode WebSocket URL for real-time Solana account updates (recommended). Can be full URL or auto-constructed from `QUICKNODE_ENDPOINT` + `QUICKNODE_API_KEY` |
+| `NEXT_PUBLIC_HELIUS_WS_URL` | No | Helius WebSocket URL for real-time updates (fallback) |
 
 ### VeriSol Protocol
 

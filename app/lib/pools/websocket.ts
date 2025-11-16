@@ -1,5 +1,6 @@
 // WebSocket manager for real-time pool state updates
 // Provides real-time price and liquidity updates for arbitrage opportunities
+// Uses QuickNode WebSocket streaming for account updates
 
 import { Connection, PublicKey } from '@solana/web3.js';
 import { PoolData, DEXProtocol } from './types';
@@ -20,6 +21,8 @@ export class PoolWebSocketManager {
   private connections: Map<string, WebSocket> = new Map();
   private callbacks: Map<string, Set<PoolUpdateCallback>> = new Map();
   private reconnectAttempts: Map<string, number> = new Map();
+  private subscriptionIds: Map<string, number> = new Map();
+  private requestIdCounter = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000;
 
@@ -100,8 +103,32 @@ export class PoolWebSocketManager {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          const update = this.parseUpdate(data, dex, poolId);
           
+          // Handle Solana WebSocket response format
+          // Response can be: subscription confirmation, account update, or error
+          if (data.result) {
+            // This is a subscription confirmation
+            if (typeof data.result === 'number') {
+              const subscriptionId = data.result;
+              this.subscriptionIds.set(key, subscriptionId);
+              console.log(`[WebSocket] Subscription confirmed for ${key} (ID: ${subscriptionId})`);
+              return;
+            }
+            
+            // This is an account update notification
+            if (data.params && data.params.result && data.params.result.value) {
+              const accountData = data.params.result.value;
+              const update = this.parseSolanaAccountUpdate(accountData, dex, poolId);
+              
+              if (update) {
+                this.notifyCallbacks(key, update);
+              }
+              return;
+            }
+          }
+          
+          // Fallback: try to parse as generic update
+          const update = this.parseUpdate(data, dex, poolId);
           if (update) {
             this.notifyCallbacks(key, update);
           }
@@ -131,49 +158,141 @@ export class PoolWebSocketManager {
   }
 
   /**
-   * Get WebSocket URL for a specific DEX
+   * Get WebSocket URL for QuickNode stream
+   * QuickNode provides WebSocket streaming for Solana accounts
    */
   private getWebSocketUrl(dex: DEXProtocol, poolId: string): string | null {
-    // Note: Most DEXs don't have public WebSocket APIs
-    // This is a placeholder structure - in production, you'd use:
-    // - Helius WebSocket API (if available)
-    // - Birdeye WebSocket API (if available)
-    // - Custom WebSocket server that monitors on-chain accounts
+    // Use QuickNode WebSocket for all DEXs (monitors on-chain account changes)
+    // QuickNode WebSocket URL format: wss://your-endpoint.solana-mainnet.quiknode.pro/your-api-key/
     
-    switch (dex) {
-      case 'helius':
-        // Helius WebSocket (if available)
-        return process.env.NEXT_PUBLIC_HELIUS_WS_URL || null;
-      case 'birdeye':
-        // Birdeye WebSocket (if available)
-        return process.env.NEXT_PUBLIC_BIRDEYE_WS_URL || null;
-      default:
-        // For other DEXs, we'll use polling fallback
-        // In production, you might set up a custom WebSocket server
-        // that monitors on-chain account changes
-        return null;
+    // Option 1: Use full URL if provided
+    const quickNodeWsUrl = process.env.NEXT_PUBLIC_QUICKNODE_WS_URL;
+    if (quickNodeWsUrl && quickNodeWsUrl.trim()) {
+      return quickNodeWsUrl;
     }
+    
+    // Option 2: Construct URL from endpoint + API key
+    const quickNodeEndpoint = process.env.QUICKNODE_ENDPOINT;
+    const quickNodeApiKey = process.env.QUICKNODE_API_KEY;
+    
+    if (quickNodeEndpoint && quickNodeApiKey) {
+      // Construct WebSocket URL from endpoint and API key
+      const wsUrl = `wss://${quickNodeEndpoint}/${quickNodeApiKey}/`;
+      return wsUrl;
+    }
+    
+    // Fallback to Helius if QuickNode not configured
+    if (dex === 'helius') {
+      return process.env.NEXT_PUBLIC_HELIUS_WS_URL || null;
+    }
+    
+    // For other DEXs without QuickNode, return null (will use polling fallback)
+    return null;
   }
 
   /**
-   * Send subscription message to WebSocket
+   * Send subscription message to QuickNode WebSocket
+   * Uses Solana's accountSubscribe method to monitor pool account changes
    */
   private sendSubscription(ws: WebSocket, dex: DEXProtocol, poolId: string): void {
-    const message = {
-      method: 'subscribe',
-      params: {
-        poolId,
-        dex,
-      },
-    };
-    
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(message));
+    try {
+      // Convert poolId to PublicKey if it's a valid address
+      let accountPubkey: PublicKey;
+      try {
+        accountPubkey = new PublicKey(poolId);
+      } catch {
+        console.warn(`[WebSocket] Invalid pool ID for subscription: ${poolId}`);
+        return;
+      }
+
+      // Solana WebSocket subscription format
+      const requestId = ++this.requestIdCounter;
+      const subscriptionId = requestId;
+      
+      const message = {
+        jsonrpc: '2.0',
+        id: requestId,
+        method: 'accountSubscribe',
+        params: [
+          accountPubkey.toBase58(),
+          {
+            encoding: 'base64',
+            commitment: 'confirmed',
+          },
+        ],
+      };
+      
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(message));
+        this.subscriptionIds.set(`${dex}:${poolId}`, subscriptionId);
+        console.log(`[WebSocket] Subscribed to account ${poolId} (subscription ID: ${subscriptionId})`);
+      }
+    } catch (error) {
+      console.error(`[WebSocket] Error sending subscription for ${poolId}:`, error);
     }
   }
 
   /**
-   * Parse WebSocket message into PoolUpdate
+   * Parse Solana account update from QuickNode WebSocket
+   */
+  private parseSolanaAccountUpdate(accountData: any, dex: DEXProtocol, poolId: string): PoolUpdate | null {
+    try {
+      // Account data comes as base64 encoded
+      // We need to decode and parse the pool state
+      // This is a simplified parser - actual parsing depends on pool type (Raydium, Orca, etc.)
+      
+      if (!accountData.data || !Array.isArray(accountData.data)) {
+        return null;
+      }
+
+      // Decode base64 account data
+      const accountBytes = Buffer.from(accountData.data[0], 'base64');
+      
+      // Parse pool reserves and price from account data
+      // This is a generic parser - you'll need to adjust based on specific DEX pool structure
+      // For Raydium: reserves are typically at specific offsets
+      // For Orca: different structure
+      // This is a placeholder that extracts what it can
+      
+      let reserveA = BigInt(0);
+      let reserveB = BigInt(0);
+      let price = 0;
+
+      // Try to extract reserves (simplified - actual parsing depends on pool type)
+      if (accountBytes.length >= 16) {
+        // Example: read first 8 bytes as reserveA, next 8 as reserveB
+        // This is a placeholder - adjust based on actual pool account structure
+        try {
+          reserveA = accountBytes.readBigUInt64LE(0);
+          reserveB = accountBytes.length >= 16 ? accountBytes.readBigUInt64LE(8) : BigInt(0);
+          
+          // Calculate price from reserves
+          if (reserveB > 0) {
+            price = Number(reserveA) / Number(reserveB);
+          }
+        } catch (e) {
+          // If parsing fails, we still create an update to notify of account change
+          console.warn(`[WebSocket] Could not parse reserves from account data for ${poolId}`);
+        }
+      }
+
+      return {
+        poolId,
+        dex,
+        price,
+        reserveA,
+        reserveB,
+        volume24h: undefined, // Not available from account data alone
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error(`[WebSocket] Error parsing Solana account update:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse WebSocket message into PoolUpdate (fallback for non-Solana formats)
    */
   private parseUpdate(data: any, dex: DEXProtocol, poolId: string): PoolUpdate | null {
     try {
@@ -235,10 +354,27 @@ export class PoolWebSocketManager {
   private disconnect(key: string): void {
     const ws = this.connections.get(key);
     if (ws) {
+      // Unsubscribe before closing if we have a subscription ID
+      const subscriptionId = this.subscriptionIds.get(key);
+      if (subscriptionId && ws.readyState === WebSocket.OPEN) {
+        try {
+          const unsubscribeMessage = {
+            jsonrpc: '2.0',
+            id: ++this.requestIdCounter,
+            method: 'accountUnsubscribe',
+            params: [subscriptionId],
+          };
+          ws.send(JSON.stringify(unsubscribeMessage));
+        } catch (error) {
+          console.error(`[WebSocket] Error unsubscribing ${key}:`, error);
+        }
+      }
+      
       ws.close();
       this.connections.delete(key);
       this.callbacks.delete(key);
       this.reconnectAttempts.delete(key);
+      this.subscriptionIds.delete(key);
     }
   }
 
