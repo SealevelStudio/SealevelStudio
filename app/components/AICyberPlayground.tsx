@@ -208,9 +208,13 @@ export function AICyberPlayground({ onBack }: { onBack?: () => void }) {
                 strategyAdvice = '\n**Strategy Analysis:**\n• Cross-protocol opportunity (e.g., DEX-DEX arbitrage)\n• May involve different fee structures (0.10% Meteora vs 0.30% Raydium)\n• Atomic execution via Jito bundles is critical for risk-free execution';
               }
               
-              const responseText = `✅ **Arbitrage Opportunities Found!**\n\nFound ${opportunities.length} opportunity(ies)\n• Simple (2-pool): ${simpleArb}\n• Multi-hop: ${multiHop}\n• Cross-protocol: ${crossProtocol}\n\n🏆 **Best Opportunity:**\n• Profit: ${best.profit.toFixed(6)} SOL (${best.profitPercent.toFixed(2)}%)\n• Type: ${best.type}\n• Confidence: ${(best.confidence * 100).toFixed(0)}%\n• Path: ${best.path.startToken?.symbol || 'Token A'} → ${best.path.endToken?.symbol || 'Token B'}\n• Hops: ${best.path.totalHops || 1}\n• Net Profit (after gas): ${best.netProfit.toFixed(6)} SOL${strategyAdvice}\n\n${opportunities.length > 1 ? `\n**Top ${Math.min(3, opportunities.length)} Opportunities:**\n${opportunities.slice(0, 3).map((opp, idx) => 
-                `${idx + 1}. ${opp.profit.toFixed(6)} SOL (${opp.profitPercent.toFixed(2)}%) - ${opp.type} - ${(opp.confidence * 100).toFixed(0)}% confidence`
-              ).join('\n')}` : ''}\n\n💡 **Execution Recommendations:**\n• Use Jito bundles for atomic execution (eliminates execution risk)\n• Consider Kamino flash loans for zero-capital arbitrage\n• Monitor ShredStream for MEV opportunities\n• Use the Arbitrage Scanner view to build transactions`;
+              const topOpportunities = opportunities.length > 1 
+                ? `\n**Top ${Math.min(3, opportunities.length)} Opportunities:**\n${opportunities.slice(0, 3).map((opp, idx) => 
+                    `${idx + 1}. ${opp.profit.toFixed(6)} SOL (${opp.profitPercent.toFixed(2)}%) - ${opp.type} - ${(opp.confidence * 100).toFixed(0)}% confidence`
+                  ).join('\n')}`
+                : '';
+              
+              const responseText = `✅ **Arbitrage Opportunities Found!**\n\nFound ${opportunities.length} opportunity(ies)\n• Simple (2-pool): ${simpleArb}\n• Multi-hop: ${multiHop}\n• Cross-protocol: ${crossProtocol}\n\n🏆 **Best Opportunity:**\n• Profit: ${best.profit.toFixed(6)} SOL (${best.profitPercent.toFixed(2)}%)\n• Type: ${best.type}\n• Confidence: ${(best.confidence * 100).toFixed(0)}%\n• Path: ${best.path.startToken?.symbol || 'Token A'} → ${best.path.endToken?.symbol || 'Token B'}\n• Hops: ${best.path.totalHops || 1}\n• Net Profit (after gas): ${best.netProfit.toFixed(6)} SOL${strategyAdvice}${topOpportunities}\n\n💡 **Execution Recommendations:**\n• Use Jito bundles for atomic execution (eliminates execution risk)\n• Consider Kamino flash loans for zero-capital arbitrage\n• Monitor ShredStream for MEV opportunities\n• Use the Arbitrage Scanner view to build transactions`;
               
               setResponse(responseText);
             } else {
@@ -425,10 +429,9 @@ export function AICyberPlayground({ onBack }: { onBack?: () => void }) {
 
                 {response && (
                   <div className="card-modern p-4">
-                    <div className="prose prose-invert max-w-none">
+                    <div className="prose prose-invert max-w-none markdown-content">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
-                        className="markdown-content"
                         components={{
                           h1: ({ node, ...props }) => (
                             <h1 className="text-2xl font-bold text-white mb-3 mt-4 first:mt-0 border-b border-gray-700 pb-2" {...props} />

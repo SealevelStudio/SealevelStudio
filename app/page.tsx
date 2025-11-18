@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getMint } from '@solana/spl-token';
-import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck, Lock, Shield, Bot, Book, BarChart3, Brain, DollarSign, Coins, Droplet, Twitter, LineChart } from 'lucide-react';
+import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck, Lock, Shield, Bot, Book, BarChart3, Brain, DollarSign, Coins, Droplet, Twitter, LineChart, MessageCircle } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WalletButton from './components/WalletButton';
 import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilder';
@@ -37,6 +37,8 @@ import { RentReclaimer } from './components/RentReclaimer';
 import { DevnetFaucet } from './components/DevnetFaucet';
 import { ToolsHub } from './components/ToolsHub';
 import { TwitterBot } from './components/TwitterBot';
+import { SubstackBot } from './components/SubstackBot';
+import { TelegramBot } from './components/TelegramBot';
 import { ChartsView } from './components/ChartsView';
 
 // Suppress hydration warnings during development
@@ -707,6 +709,8 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
     { id: 'attestation', label: 'VeriSol Attestation', icon: <ShieldCheck className="h-4 w-4" />, section: 'other' },
     { id: 'web2', label: 'Web2 Tools', icon: <Terminal className="h-4 w-4" /> },
     { id: 'twitter-bot', label: 'Twitter Bot', icon: <Twitter className="h-4 w-4" />, section: 'social' },
+    { id: 'substack-bot', label: 'Substack Bot', icon: <Book className="h-4 w-4" />, section: 'social' },
+    { id: 'telegram-bot', label: 'Telegram Bot', icon: <MessageCircle className="h-4 w-4" />, section: 'social' },
     { id: 'charts', label: 'Charts & Visualizations', icon: <LineChart className="h-4 w-4" />, section: 'tools' },
     { id: 'wallets', label: 'Wallet Manager', icon: <Wallet className="h-4 w-4" /> },
     { id: 'rd-console', label: 'R&D Console', icon: <Lock className="h-4 w-4" /> },
@@ -1059,6 +1063,16 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
     return <TwitterBot onBack={() => setActiveView('inspector')} />;
   }
 
+  // Substack Bot has its own full-screen layout
+  if (activeView === 'substack-bot') {
+    return <SubstackBot onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Telegram Bot has its own full-screen layout
+  if (activeView === 'telegram-bot') {
+    return <TelegramBot onBack={() => setActiveView('inspector')} />;
+  }
+
   // Charts View has its own full-screen layout
   if (activeView === 'charts') {
     return <ChartsView onBack={() => setActiveView('inspector')} />;
@@ -1168,7 +1182,7 @@ export default function App() {
   }
 
   // Main app interface
-  const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'admin' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot' || activeView === 'presale' || activeView === 'cyber-playground' || activeView === 'tools' || activeView === 'revenue' || activeView === 'rent-reclaimer' || activeView === 'faucet' || activeView === 'twitter-bot' || activeView === 'charts';
+  const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'admin' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot' || activeView === 'presale' || activeView === 'cyber-playground' || activeView === 'tools' || activeView === 'revenue' || activeView === 'rent-reclaimer' || activeView === 'faucet' || activeView === 'twitter-bot' || activeView === 'substack-bot' || activeView === 'telegram-bot' || activeView === 'charts';
   
   return (
     <ClientOnly>

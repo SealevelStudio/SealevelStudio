@@ -199,9 +199,33 @@ export function TransactionBundler({ onBack }: TransactionBundlerProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-white">
+    <div className="flex flex-col h-full text-white relative" style={{
+      backgroundColor: '#0f172a', // slate-950
+      position: 'relative',
+    }}>
+      {/* Logo background layer - behind dot grid */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'url(/sea-level-logo.png)',
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.08, // Very subtle, opaque background
+          zIndex: 0,
+        }}
+      />
+      {/* Dot grid overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(#1e293b_1px, transparent_1px)',
+          backgroundSize: '16px 16px',
+          zIndex: 1,
+        }}
+      />
       {/* Header */}
-      <div className="border-b border-gray-700 p-6 bg-gray-800">
+      <div className="border-b border-gray-700 p-6 bg-gray-800/80 backdrop-blur-sm relative z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {onBack && (
@@ -230,7 +254,7 @@ export function TransactionBundler({ onBack }: TransactionBundlerProps) {
         </p>
       </div>
 
-      <div className="flex-1 overflow-hidden flex">
+      <div className="flex-1 overflow-hidden flex relative z-10">
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           {/* Settings */}

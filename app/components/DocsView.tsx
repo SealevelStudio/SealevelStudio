@@ -993,10 +993,9 @@ The model will continuously improve based on real-world usage and feedback.`
                 <div className="text-sm text-gray-400">{selectedDoc.category}</div>
               </div>
               <div className="prose prose-invert prose-lg max-w-none">
-                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 markdown-content">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
-                    className="markdown-content"
                     components={{
                       h1: ({ node, ...props }) => (
                         <h1 className="text-3xl font-bold text-white mb-4 mt-6 first:mt-0 border-b border-gray-700 pb-2" {...props} />

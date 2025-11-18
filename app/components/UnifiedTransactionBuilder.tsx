@@ -66,6 +66,12 @@ const SIMPLE_BLOCK_CATEGORIES: Record<string, SimpleBlock[]> = {
     { id: 'jup_swap', name: 'Jupiter Swap', icon: 'Zap', color: 'bg-orange-500', verified: true, params: { amount: '100000000', minAmountOut: '0' } },
     { id: 'system_transfer', name: 'Transfer SOL', icon: 'Layers', color: 'bg-green-600', verified: true, params: { to: '', amount: '1000000000' } },
     { id: 'token_transfer', name: 'Transfer Token', icon: 'TrendingUp', color: 'bg-blue-500', verified: true, params: { destination: '', amount: '1000000' } },
+    { id: 'kamino_flash_loan', name: 'Kamino Flash Loan', icon: 'Zap', color: 'bg-cyan-600', verified: true, params: { protocol: 'kamino', tokenMint: '', amount: '1000000000', lendingPool: '' } },
+    { id: 'kamino_flash_repay', name: 'Kamino Flash Repay', icon: 'Zap', color: 'bg-cyan-700', verified: true, params: { protocol: 'kamino', tokenMint: '', repayAmount: '1000000000', lendingPool: '' } },
+    { id: 'solend_flash_loan', name: 'Solend Flash Loan', icon: 'Zap', color: 'bg-blue-600', verified: true, params: { protocol: 'solend', tokenMint: '', amount: '1000000000', lendingPool: '' } },
+    { id: 'solend_flash_repay', name: 'Solend Flash Repay', icon: 'Zap', color: 'bg-blue-700', verified: true, params: { protocol: 'solend', tokenMint: '', repayAmount: '1000000000', lendingPool: '' } },
+    { id: 'marginfi_flash_loan', name: 'Marginfi Flash Loan', icon: 'Zap', color: 'bg-purple-600', verified: true, params: { protocol: 'marginfi', tokenMint: '', amount: '1000000000', lendingPool: '' } },
+    { id: 'marginfi_flash_repay', name: 'Marginfi Flash Repay', icon: 'Zap', color: 'bg-purple-700', verified: true, params: { protocol: 'marginfi', tokenMint: '', repayAmount: '1000000000', lendingPool: '' } },
   ],
   TOKEN: [
     { id: 'create_token_and_mint', name: 'Create Token + Mint', icon: 'Zap', color: 'bg-purple-600', verified: true, params: { 
@@ -87,6 +93,7 @@ const SIMPLE_BLOCK_CATEGORIES: Record<string, SimpleBlock[]> = {
       // Metaplex Metadata
       tokenName: '',
       tokenSymbol: '',
+      tokenImage: '', // Base64 or URL for token image/logo
       metadataURI: '',
       sellerFeeBasisPoints: '500',
       creators: '',
@@ -1236,11 +1243,13 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
 
               <div className="space-y-4">
                 {Object.entries(selectedBlock.params).map(([key, value]) => {
-                  const isAddressField = ['to', 'destination', 'wallet', 'mint', 'mintAuthority', 'freezeAuthority', 'tokenAccountOwner', 'delegate', 'transferHookProgram', 'metadataPointer', 'updateAuthority'].includes(key);
-                  const isAmountField = ['amount', 'initialSupply', 'supplyCap', 'delegatedAmount'].includes(key);
+                  const isAddressField = ['to', 'destination', 'wallet', 'mint', 'mintAuthority', 'freezeAuthority', 'tokenAccountOwner', 'delegate', 'transferHookProgram', 'metadataPointer', 'updateAuthority', 'tokenMint', 'lendingPool'].includes(key);
+                  const isAmountField = ['amount', 'initialSupply', 'supplyCap', 'delegatedAmount', 'repayAmount'].includes(key);
                   const isBooleanField = ['enableFreeze', 'enableTax', 'revokeMintAuthority', 'freezeInitialAccount', 'isNative', 'primarySaleHappened', 'isMutable', 'useToken2022', 'enableConfidentialTransfers', 'enableInterestBearing', 'enableNonTransferable', 'enableTransferMemo', 'enableImmutableOwner'].includes(key);
                   const isPercentageField = ['transferFee', 'sellerFeeBasisPoints', 'interestRate'].includes(key);
                   const isStringField = ['tokenName', 'tokenSymbol', 'metadataURI', 'creators'].includes(key);
+                  const isImageField = key === 'tokenImage';
+                  const isProtocolField = key === 'protocol';
                   
                   // Auto-convert SOL to lamports (hidden from user)
                   const convertSolToLamports = (solValue: string): string => {
@@ -1293,6 +1302,60 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
                             className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 pr-10 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors min-h-[60px]"
                             placeholder="addr1:50,addr2:50 (address:share pairs)"
                           />
+                        ) : isProtocolField ? (
+                          <select
+                            value={value}
+                            onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
+                          >
+                            <option value="kamino">Kamino Finance (0.05% fee)</option>
+                            <option value="solend">Solend (0.09% fee)</option>
+                            <option value="marginfi">Marginfi (0.08% fee)</option>
+                            <option value="jupiter">Jupiter (0.10% fee)</option>
+                            <option value="mango">Mango Markets (0.12% fee)</option>
+                          </select>
+                        ) : isImageField ? (
+                          <div className="space-y-2">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const base64 = reader.result as string;
+                                    updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: base64 });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-teal-600 file:text-white hover:file:bg-teal-700"
+                            />
+                            {value && (
+                              <div className="relative">
+                                <img 
+                                  src={value} 
+                                  alt="Token preview" 
+                                  className="w-full h-32 object-contain rounded border border-slate-700 bg-slate-900"
+                                />
+                                <button
+                                  onClick={() => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: '' })}
+                                  className="absolute top-2 right-2 p-1 bg-red-600 hover:bg-red-700 rounded text-white text-xs"
+                                  title="Remove image"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            )}
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
+                              placeholder="Or paste image URL or base64 data URI"
+                            />
+                          </div>
                         ) : (
                           <input 
                             type="text" 

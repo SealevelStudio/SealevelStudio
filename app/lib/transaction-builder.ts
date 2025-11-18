@@ -250,6 +250,7 @@ export class TransactionBuilder {
     // Metaplex Metadata
     const tokenName = args.tokenName || '';
     const tokenSymbol = args.tokenSymbol || '';
+    const tokenImage = args.tokenImage || ''; // Base64 data URI or URL
     const metadataURI = args.metadataURI || '';
     const sellerFeeBasisPoints = args.sellerFeeBasisPoints || 500;
     const creators = args.creators || '';
@@ -378,15 +379,18 @@ export class TransactionBuilder {
     }
     
     // 5. Create Metaplex Metadata (if provided)
-    if (tokenName || tokenSymbol || metadataURI) {
+    if (tokenName || tokenSymbol || metadataURI || tokenImage) {
       // This would create a Metaplex metadata account
       // For now, we'll add the instruction structure
       const metadataProgramId = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
       // Metadata PDA derivation would go here
       // Full implementation would use Metaplex SDK or manual instruction building
+      // If tokenImage is provided, it should be included in the metadata JSON
+      // The image can be a base64 data URI or a URL - if base64, it should be uploaded to IPFS/Arweave first
       console.log('Metaplex metadata would be created here with:', {
         name: tokenName,
         symbol: tokenSymbol,
+        image: tokenImage ? (tokenImage.startsWith('data:') ? '[Base64 Image]' : tokenImage) : undefined,
         uri: metadataURI,
         sellerFeeBasisPoints,
         creators,

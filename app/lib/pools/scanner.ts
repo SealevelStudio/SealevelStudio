@@ -73,18 +73,73 @@ export class PoolScanner {
 
         try {
           const result = await fetcher.fetchPools(connection);
+          
+          // Log results for debugging
+          if (result.pools.length > 0) {
+            console.log(`[Scanner] ${dex}: Found ${result.pools.length} pools`);
+          } else {
+            console.warn(`[Scanner] ${dex}: No pools found`);
+          }
+          
           allPools.push(...result.pools);
           
           if (result.errors && result.errors.length > 0) {
-            this.state.errors.push(...result.errors);
+            console.warn(`[Scanner] ${dex} errors:`, result.errors);
+            this.state.errors.push(...result.errors.map(e => `[${dex}] ${e}`));
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          this.state.errors.push(`Error fetching ${dex}: ${errorMsg}`);
+          console.error(`[Scanner] Error fetching ${dex}:`, error);
+          this.state.errors.push(`[${dex}] Error: ${errorMsg}`);
         }
       });
 
-      await Promise.allSettled(fetchPromises);
+      const results = await Promise.allSettled(fetchPromises);
+      
+      // Log summary
+      const dexCounts = new Map<DEXProtocol, number>();
+      allPools.forEach(pool => {
+        dexCounts.set(pool.dex, (dexCounts.get(pool.dex) || 0) + 1);
+      });
+      
+      console.log('[Scanner] Pool counts by DEX (before Birdeye):', Object.fromEntries(dexCounts));
+      
+      // Always try Birdeye as a primary source (it aggregates pools from all DEXs)
+      // This ensures we get pools even if individual DEX fetchers fail
+      if (this.fetchers.has('birdeye')) {
+        try {
+          console.log('[Scanner] Fetching pools from Birdeye (aggregates all DEXs)...');
+          const birdeyeFetcher = this.fetchers.get('birdeye') as BirdeyeFetcher;
+          const birdeyeResult = await birdeyeFetcher.fetchPools(connection);
+          
+          if (birdeyeResult.pools.length > 0) {
+            console.log(`[Scanner] Birdeye: Found ${birdeyeResult.pools.length} pools`);
+            // Merge Birdeye pools (avoid duplicates by pool ID)
+            const existingIds = new Set(allPools.map(p => p.id));
+            const newPools = birdeyeResult.pools.filter(p => !existingIds.has(p.id));
+            allPools.push(...newPools);
+            console.log(`[Scanner] Added ${newPools.length} new pools from Birdeye`);
+            
+            if (birdeyeResult.errors && birdeyeResult.errors.length > 0) {
+              this.state.errors.push(...birdeyeResult.errors.map(e => `[birdeye] ${e}`));
+            }
+          } else {
+            console.warn('[Scanner] Birdeye returned no pools');
+          }
+        } catch (error) {
+          console.error('[Scanner] Birdeye fetch failed:', error);
+          this.state.errors.push(`[birdeye] Error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      
+      // Final summary
+      const finalDexCounts = new Map<DEXProtocol, number>();
+      allPools.forEach(pool => {
+        finalDexCounts.set(pool.dex, (finalDexCounts.get(pool.dex) || 0) + 1);
+      });
+      
+      console.log('[Scanner] Final pool counts by DEX:', Object.fromEntries(finalDexCounts));
+      console.log(`[Scanner] Total pools: ${allPools.length}`);
 
       // Enrich pool data with Birdeye if available (optimized batch processing)
       if (this.fetchers.has('birdeye')) {
