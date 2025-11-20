@@ -299,20 +299,34 @@ export function createAttestationClient(
         ATTESTATION_PROGRAM_ID
       );
 
-      // TODO: Implement once program is deployed
-      // const tx = await program.methods
-      //   .updateThresholds(
-      //     new anchor.BN(tier1),
-      //     new anchor.BN(tier2),
-      //     new anchor.BN(tier3)
-      //   )
-      //   .accounts({
-      //     registry,
-      //     authority: wallet.publicKey,
-      //   })
-      //   .rpc();
+      // Use real program if available (beta testing)
+      if (program) {
+        try {
+          const tx = await program.methods
+            .updateThresholds(
+              new BN(tier1),
+              new BN(tier2),
+              new BN(tier3)
+            )
+            .accounts({
+              registry,
+              authority: wallet.publicKey!,
+            })
+            .rpc();
+          return tx;
+        } catch (error) {
+          console.error('Error updating thresholds:', error);
+          throw error;
+        }
+      }
 
-      throw new Error('Program not yet deployed. Please build and deploy the Anchor program first.');
+      // Fallback: check if program is deployed but IDL not loaded
+      const deployed = await isProgramDeployed();
+      if (deployed) {
+        throw new Error('Program is deployed but IDL could not be loaded. Please ensure the IDL file exists.');
+      }
+
+      throw new Error('Attestation program not available. Please ensure the program is deployed and IDL is accessible.');
     },
 
     async revokeAttestation(attestationId: number) {
