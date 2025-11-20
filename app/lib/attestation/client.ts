@@ -4,8 +4,6 @@
 import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import type { WalletContextState } from '@solana/wallet-adapter-react';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
 // Import IDL - this will be generated after building the Anchor program
 // For now, we'll define a basic structure
