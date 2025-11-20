@@ -97,6 +97,10 @@ export class ArbitrageDetector {
   private deduplicateOpportunities(opportunities: ArbitrageOpportunity[]): ArbitrageOpportunity[] {
     const seen = new Set<string>();
     return opportunities.filter(opp => {
+      // Validate path.steps exists and has elements
+      if (!opp.path?.steps || opp.path.steps.length === 0) {
+        return false; // Skip opportunities with invalid paths
+      }
       const key = `${opp.path.steps[0]?.pool.id}-${opp.path.steps[opp.path.steps.length - 1]?.pool.id}`;
       if (seen.has(key)) return false;
       seen.add(key);

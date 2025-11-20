@@ -79,18 +79,29 @@ export class LocalAIProvider extends BaseConsensusProvider {
 
   /**
    * Check if running in Docker
+   * Only checks for localhost endpoints to avoid unnecessary requests
    */
   async isDockerEndpoint(): Promise<boolean> {
     if (this.localConfig.dockerEnabled) {
       return true;
     }
 
-    if (!this.dockerEndpointChecked) {
-      const isDocker = await checkDockerEndpoint(this.localConfig.endpoint);
-      this.dockerEndpointChecked = true;
-      if (isDocker) {
-        this.localConfig.dockerEnabled = true;
+    // Only check Docker for localhost endpoints (skip remote endpoints)
+    if (!this.dockerEndpointChecked && 
+        (this.localConfig.endpoint.includes('localhost') || 
+         this.localConfig.endpoint.includes('127.0.0.1'))) {
+      try {
+        const isDocker = await checkDockerEndpoint(this.localConfig.endpoint);
+        this.dockerEndpointChecked = true;
+        if (isDocker) {
+          this.localConfig.dockerEnabled = true;
+        }
+      } catch (error) {
+        // Silently fail - not a Docker endpoint or endpoint not accessible
+        this.dockerEndpointChecked = true;
       }
+    } else {
+      this.dockerEndpointChecked = true;
     }
 
     return this.localConfig.dockerEnabled || false;

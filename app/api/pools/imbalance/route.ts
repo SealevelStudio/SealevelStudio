@@ -86,6 +86,11 @@ export async function GET(request: NextRequest) {
             }
           }
 
+          // Validate path.steps exists and has elements before accessing
+          if (!opp.path?.steps || opp.path.steps.length === 0) {
+            continue; // Skip this opportunity if path.steps is invalid
+          }
+
           signals.push({
             type: 'price_deviation',
             severity: opp.profitPercent > 5 ? 'critical' : 
@@ -174,6 +179,11 @@ export async function GET(request: NextRequest) {
       );
 
       for (const opp of graphOpportunities) {
+        // Validate path.steps exists and has elements before accessing
+        if (!opp.path?.steps || opp.path.steps.length === 0) {
+          continue; // Skip this opportunity if path.steps is invalid
+        }
+
         signals.push({
           type: 'price_deviation',
           severity: opp.profitPercent > 2 ? 'high' : 'medium',

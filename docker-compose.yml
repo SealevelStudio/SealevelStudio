@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   ollama:
     image: ollama/ollama:latest
@@ -51,10 +49,27 @@ services:
       retries: 3
       start_period: 20s
 
+  redis:
+    image: redis:7-alpine
+    container_name: sealevel-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   ollama-data:
     driver: local
   mcp-data:
+    driver: local
+  redis-data:
     driver: local
 
 networks:

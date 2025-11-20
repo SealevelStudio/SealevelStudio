@@ -16,8 +16,10 @@ import { poolWebSocketManager, PoolUpdate } from './websocket';
 export class PoolScanner {
   private fetchers: Map<DEXProtocol, PoolFetcher>;
   private state: ScannerState;
+  private rpcUrl?: string;
 
-  constructor(config: Partial<ScannerConfig> = {}) {
+  constructor(config: Partial<ScannerConfig> & { rpcUrl?: string } = {}) {
+    this.rpcUrl = config.rpcUrl;
     this.state = {
       pools: [],
       opportunities: [],
@@ -72,6 +74,15 @@ export class PoolScanner {
         }
 
         try {
+          // Pass RPC URL to fetcher if available
+          if (this.rpcUrl) {
+            if (typeof (fetcher as any).setRpcUrl === 'function') {
+              (fetcher as any).setRpcUrl(this.rpcUrl);
+              console.log(`[Scanner] Set RPC URL for ${dex}: ${this.rpcUrl.replace(/api-key=[^&]+/, 'api-key=***')}`);
+            } else {
+              console.warn(`[Scanner] Fetcher ${dex} does not have setRpcUrl method`);
+            }
+          }
           const result = await fetcher.fetchPools(connection);
           
           // Log results for debugging

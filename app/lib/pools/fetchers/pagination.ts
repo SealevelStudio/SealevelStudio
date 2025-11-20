@@ -36,6 +36,7 @@ export interface PaginationOptions {
 
 /**
  * Fetch all program accounts with pagination
+ * Uses Helius getProgramAccountsV2 method for efficient pagination
  */
 export async function fetchAllProgramAccountsV2(
   rpcUrl: string,
@@ -56,48 +57,48 @@ export async function fetchAllProgramAccountsV2(
   const maxPages = 1000; // Safety limit to prevent infinite loops
 
   do {
-    const params: any = {
-      encoding,
-      limit: Math.min(limit, 10000), // Helius max is 10000
+    // Helius getProgramAccountsV2 format:
+    // method: "getProgramAccountsV2"
+    // params: [programId, { encoding, limit, filters, paginationKey, ... }]
+    const requestBody = {
+      jsonrpc: '2.0' as const,
+      id: pageCount + 1,
+      method: 'getProgramAccountsV2',
+      params: [
+        programId,
+        {
+          encoding,
+          limit: Math.min(limit, 10000), // Helius max is 10000
+          ...(filters.length > 0 && { filters }),
+          ...(dataSlice && { dataSlice }),
+          ...(paginationKey && { paginationKey }),
+          ...(changedSinceSlot && { changedSinceSlot }),
+        },
+      ],
     };
-
-    if (paginationKey) {
-      params.paginationKey = paginationKey;
-    }
-
-    if (dataSlice) {
-      params.dataSlice = dataSlice;
-    }
-
-    if (filters.length > 0) {
-      params.filters = filters;
-    }
-
-    if (changedSinceSlot) {
-      params.changedSinceSlot = changedSinceSlot;
-    }
 
     const response = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: pageCount + 1,
-        method: 'getProgramAccountsV2',
-        params: [programId, params],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      throw new Error(`RPC request failed: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`RPC request failed: ${response.statusText}. Response: ${errorText}`);
     }
 
     const data = await response.json();
 
     if (data.error) {
-      throw new Error(`RPC error: ${data.error.message || JSON.stringify(data.error)}`);
+      const errorMsg = data.error.message || JSON.stringify(data.error);
+      // Check for method errors or stake-related errors
+      if (errorMsg.includes('method') || errorMsg.includes('not found') || errorMsg.includes('stake') || errorMsg.includes('invalid')) {
+        throw new Error(`RPC method error: ${errorMsg}. Make sure you're using the correct RPC endpoint and method.`);
+      }
+      throw new Error(`RPC error: ${errorMsg}`);
     }
 
     if (!data.result) {
@@ -206,48 +207,45 @@ export async function fetchAllProgramAccountsV2WithProgress(
   } = options;
 
   do {
-    const params: any = {
-      encoding,
-      limit: Math.min(limit, 10000),
+    // Helius getProgramAccountsV2 format
+    const requestBody = {
+      jsonrpc: '2.0' as const,
+      id: pageCount + 1,
+      method: 'getProgramAccountsV2',
+      params: [
+        programId,
+        {
+          encoding,
+          limit: Math.min(limit, 10000),
+          ...(filters.length > 0 && { filters }),
+          ...(dataSlice && { dataSlice }),
+          ...(paginationKey && { paginationKey }),
+          ...(changedSinceSlot && { changedSinceSlot }),
+        },
+      ],
     };
-
-    if (paginationKey) {
-      params.paginationKey = paginationKey;
-    }
-
-    if (dataSlice) {
-      params.dataSlice = dataSlice;
-    }
-
-    if (filters.length > 0) {
-      params.filters = filters;
-    }
-
-    if (changedSinceSlot) {
-      params.changedSinceSlot = changedSinceSlot;
-    }
 
     const response = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: pageCount + 1,
-        method: 'getProgramAccountsV2',
-        params: [programId, params],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      throw new Error(`RPC request failed: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`RPC request failed: ${response.statusText}. Response: ${errorText}`);
     }
 
     const data = await response.json();
 
     if (data.error) {
-      throw new Error(`RPC error: ${data.error.message || JSON.stringify(data.error)}`);
+      const errorMsg = data.error.message || JSON.stringify(data.error);
+      if (errorMsg.includes('method') || errorMsg.includes('not found') || errorMsg.includes('stake') || errorMsg.includes('invalid')) {
+        throw new Error(`RPC method error: ${errorMsg}. Make sure you're using the correct RPC endpoint and method.`);
+      }
+      throw new Error(`RPC error: ${errorMsg}`);
     }
 
     if (!data.result) {
@@ -339,4 +337,3 @@ export async function fetchAllProgramAccountsV2WithProgress(
 
   return accounts;
 }
-

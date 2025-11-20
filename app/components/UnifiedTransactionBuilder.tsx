@@ -1441,104 +1441,110 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
 
   // Render Advanced Mode (InstructionAssembler)
   const renderAdvancedMode = () => (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Instruction Assembler</h1>
-          <p className="text-gray-400">
-            Build transactions by adding and configuring instructions
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setShowTemplateSelector(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Instruction</span>
-          </button>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 p-6 pb-4">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-2">Instruction Assembler</h1>
+            <p className="text-gray-400">
+              Build transactions by adding and configuring instructions
+            </p>
+          </div>
           
-          {transactionDraft.instructions.length > 0 && (
+          <div className="flex items-center space-x-2">
             <button
-              onClick={buildTransaction}
-              disabled={isBuilding || isExecuting}
-              className="flex items-center space-x-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all px-5 py-2 text-sm font-medium text-white"
+              onClick={() => setShowTemplateSelector(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition-colors"
             >
-              {isBuilding ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Building...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  <span>Build Transaction</span>
-                </>
-              )}
+              <Plus className="h-4 w-4" />
+              <span>Add Instruction</span>
             </button>
-          )}
+            
+            {transactionDraft.instructions.length > 0 && (
+              <button
+                onClick={buildTransaction}
+                disabled={isBuilding || isExecuting}
+                className="flex items-center space-x-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all px-5 py-2 text-sm font-medium text-white"
+              >
+                {isBuilding ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Building...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    <span>Build Transaction</span>
+                  </>
+                )}
+              </button>
+            )}
 
-          {builtTransaction && (
-            <button
-              onClick={executeTransaction}
-              disabled={isExecuting || !publicKey}
-              className="flex items-center space-x-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all px-5 py-2 text-sm font-medium text-white"
-            >
-              {isExecuting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  <span>Execute</span>
-                </>
-              )}
-            </button>
-          )}
+            {builtTransaction && (
+              <button
+                onClick={executeTransaction}
+                disabled={isExecuting || !publicKey}
+                className="flex items-center space-x-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all px-5 py-2 text-sm font-medium text-white"
+              >
+                {isExecuting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    <span>Execute</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
+
+        {buildError && (
+          <div className="mb-4 p-4 bg-red-900/20 border border-red-700 rounded-lg flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
+            <span className="text-red-400">{buildError}</span>
+          </div>
+        )}
       </div>
 
-      {buildError && (
-        <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded-lg flex items-center space-x-2">
-          <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-          <span className="text-red-400">{buildError}</span>
-        </div>
-      )}
-
-      {transactionDraft.instructions.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-gray-700 rounded-lg">
-          <Wrench className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 mb-4">No instructions added yet</p>
-          <button
-            onClick={() => setShowTemplateSelector(true)}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 hover:text-white transition-colors"
-          >
-            Add Your First Instruction
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {transactionDraft.instructions.map((instruction, index) => (
-            <AdvancedInstructionCard
-              key={index}
-              instruction={instruction}
-              index={index}
-              onUpdateAccount={(accountName, value) => updateAdvancedInstructionAccount(index, accountName, value)}
-              onUpdateArg={(argName, value) => updateAdvancedInstructionArg(index, argName, value)}
-              onRemove={() => removeAdvancedInstruction(index)}
-              validationErrors={validateAdvancedInstruction(instruction)}
-              onCopyAddress={copyAddress}
-              copiedAddresses={copiedAddresses}
-              justCopied={justCopied}
-              focusedInputField={focusedInputField}
-              setFocusedInputField={setFocusedInputField}
-            />
-          ))}
-        </div>
-      )}
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6">
+        {transactionDraft.instructions.length === 0 ? (
+          <div className="text-center py-12 border border-dashed border-gray-700 rounded-lg">
+            <Wrench className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">No instructions added yet</p>
+            <button
+              onClick={() => setShowTemplateSelector(true)}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 hover:text-white transition-colors"
+            >
+              Add Your First Instruction
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {transactionDraft.instructions.map((instruction, index) => (
+              <AdvancedInstructionCard
+                key={index}
+                instruction={instruction}
+                index={index}
+                onUpdateAccount={(accountName, value) => updateAdvancedInstructionAccount(index, accountName, value)}
+                onUpdateArg={(argName, value) => updateAdvancedInstructionArg(index, argName, value)}
+                onRemove={() => removeAdvancedInstruction(index)}
+                validationErrors={validateAdvancedInstruction(instruction)}
+                onCopyAddress={copyAddress}
+                copiedAddresses={copiedAddresses}
+                justCopied={justCopied}
+                focusedInputField={focusedInputField}
+                setFocusedInputField={setFocusedInputField}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {showTemplateSelector && (
         <TemplateSelectorModal

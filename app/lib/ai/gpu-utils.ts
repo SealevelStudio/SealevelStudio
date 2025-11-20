@@ -106,17 +106,35 @@ export function getRecommendedModels(gpuType: GPUType): string[] {
 
 /**
  * Check if Docker endpoint is available
+ * Tries both Ollama and OpenAI-compatible endpoints
  */
 export async function checkDockerEndpoint(endpoint: string): Promise<boolean> {
   try {
-    // Check if endpoint is a Docker container
+    // Check if endpoint is a Docker container (localhost only)
     if (endpoint.includes('localhost') || endpoint.includes('127.0.0.1')) {
-      // Try to ping the endpoint
-      const response = await fetch(`${endpoint}/api/tags`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000),
-      });
-      return response.ok;
+      // Try Ollama endpoint first
+      try {
+        const ollamaResponse = await fetch(`${endpoint}/api/tags`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(2000),
+        });
+        if (ollamaResponse.ok) {
+          return true;
+        }
+      } catch {
+        // Not Ollama, try OpenAI-compatible endpoint
+      }
+      
+      // Try OpenAI-compatible endpoint (LM Studio, vLLM, etc.)
+      try {
+        const openaiResponse = await fetch(`${endpoint}/v1/models`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(2000),
+        });
+        return openaiResponse.ok;
+      } catch {
+        return false;
+      }
     }
     return false;
   } catch {
