@@ -4,6 +4,14 @@ const nextConfig = {
   experimental: {
     optimizeCss: false,
   },
+  // Allow ngrok and other dev origins for webhook testing
+  allowedDevOrigins: [
+    '*.ngrok-free.dev',
+    '*.ngrok.io',
+    '*.ngrok.app',
+    'localhost',
+    '127.0.0.1',
+  ],
   images: {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

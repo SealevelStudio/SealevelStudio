@@ -322,8 +322,11 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              console.log('Get Started button clicked', { selectedBlockchain, onGetStarted: !!onGetStarted });
               if (onGetStarted) {
                 onGetStarted(selectedBlockchain || undefined);
+              } else {
+                console.error('onGetStarted handler is not defined');
               }
             }}
             className={`px-8 py-3 text-base font-medium rounded-lg text-white transition-all shadow-lg cursor-pointer ${
