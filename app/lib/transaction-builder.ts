@@ -595,26 +595,56 @@ export class TransactionBuilder {
     transaction.feePayer = payer;
   }
 
-  // Estimate transaction cost
+  // Estimate transaction cost with platform fee breakdown
   async estimateCost(transaction: Transaction): Promise<{
     lamports: number;
     sol: number;
+    platformFee: {
+      lamports: number;
+      sol: number;
+    };
+    total: {
+      lamports: number;
+      sol: number;
+    };
   }> {
-    const lamports = await transaction.getEstimatedFee(this.connection);
-    
+    const baseLamports = await transaction.getEstimatedFee(this.connection);
+
     // Handle case where fee estimation fails
-    if (lamports === null) {
+    if (baseLamports === null) {
       // Provide a reasonable fallback or throw an error
       // For now, we'll use a fallback estimate
+      const fallbackLamports = 5000; // ~0.000005 SOL fallback
+      const platformFeeLamports = PLATFORM_FEE_LAMPORTS;
+
       return {
-        lamports: 5000, // ~0.000005 SOL fallback
-        sol: 0.000005
+        lamports: fallbackLamports,
+        sol: fallbackLamports / 1e9,
+        platformFee: {
+          lamports: platformFeeLamports,
+          sol: platformFeeLamports / 1e9
+        },
+        total: {
+          lamports: fallbackLamports + platformFeeLamports,
+          sol: (fallbackLamports + platformFeeLamports) / 1e9
+        }
       };
     }
-    
+
+    const platformFeeLamports = PLATFORM_FEE_LAMPORTS;
+    const totalLamports = baseLamports + platformFeeLamports;
+
     return {
-      lamports,
-      sol: lamports / 1e9
+      lamports: baseLamports,
+      sol: baseLamports / 1e9,
+      platformFee: {
+        lamports: platformFeeLamports,
+        sol: platformFeeLamports / 1e9
+      },
+      total: {
+        lamports: totalLamports,
+        sol: totalLamports / 1e9
+      }
     };
   }
 }

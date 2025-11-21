@@ -83,14 +83,15 @@ export class ArbitrageDetector {
     // 4. Cross-DEX arbitrage (same pair on different DEXs with price differences)
     opportunities.push(...this.detectCrossDEXArbitrage(realPools));
 
-    // Remove duplicates and filter by minimum thresholds
+    // Remove duplicates and filter by minimum thresholds (unless showUnprofitable is true)
     const uniqueOpportunities = this.deduplicateOpportunities(opportunities);
+    
     return uniqueOpportunities
-      .filter(
-        opp =>
-          opp.netProfit >= this.config.minProfitThreshold &&
-          opp.profitPercent >= this.config.minProfitPercent
-      )
+      .filter(opp => {
+        if (this.config.showUnprofitable) return true;
+        return opp.netProfit >= this.config.minProfitThreshold &&
+               opp.profitPercent >= this.config.minProfitPercent;
+      })
       .sort((a, b) => b.netProfit - a.netProfit); // Sort by profit descending
   }
 
@@ -152,7 +153,7 @@ export class ArbitrageDetector {
           const avgPrice = (priceA + priceB) / 2;
           const priceDiffPercent = avgPrice > 0 ? (priceDiff / avgPrice) * 100 : 0;
 
-          if (priceDiffPercent > this.config.minProfitPercent) {
+          if (this.config.showUnprofitable || priceDiffPercent > this.config.minProfitPercent) {
             // Determine which direction is profitable
             const opportunity = this.calculateSimpleArbitrage(poolA, poolB);
             if (opportunity) {
@@ -288,7 +289,7 @@ export class ArbitrageDetector {
               const avgPrice = (priceA + priceB) / 2;
               const priceDiffPercent = avgPrice > 0 ? (priceDiff / avgPrice) * 100 : 0;
 
-              if (priceDiffPercent > this.config.minProfitPercent) {
+              if (this.config.showUnprofitable || priceDiffPercent > this.config.minProfitPercent) {
                 const opportunity = this.calculateSimpleArbitrage(poolA, poolB);
                 if (opportunity) {
                   opportunity.type = 'cross_protocol';
@@ -345,7 +346,7 @@ export class ArbitrageDetector {
     const gasEstimate = baseGas + priorityFee;
     const netProfit = profit - gasEstimate / 1e9;
 
-    if (netProfit <= 0) {
+    if (!this.config.showUnprofitable && netProfit <= 0) {
       return null;
     }
 
@@ -451,7 +452,7 @@ export class ArbitrageDetector {
     const gasEstimate = BASE_TRANSACTION_FEE + (SWAP_INSTRUCTION_FEE * path.length);
     const netProfit = profit - gasEstimate / 1e9;
 
-    if (netProfit <= 0) {
+    if (!this.config.showUnprofitable && netProfit <= 0) {
       return null;
     }
 

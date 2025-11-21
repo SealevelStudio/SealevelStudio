@@ -29,7 +29,7 @@ import { TransactionBundler } from './components/TransactionBundler';
 import { AdvertisingBots } from './components/AdvertisingBots';
 import { SocialFeatures } from './components/SocialFeatures';
 import { ServiceBot } from './components/ServiceBot';
-import { PageLoader } from './components/PageLoader';
+import { FeatureHighlightLoader } from './components/FeatureHighlightLoader';
 import { AdminAnalytics } from './components/AdminAnalytics';
 import { SealPresale } from './components/SealPresale';
 import { AICyberPlayground } from './components/AICyberPlayground';
@@ -1552,15 +1552,56 @@ export default function App() {
       return contextMap[activeView] ?? baseContext;
     };
 
+    // Map activeView to feature ID for loading screen
+    const getCurrentFeatureId = (view: string): string => {
+      switch (view) {
+        case 'builder':
+          return 'transaction-builder';
+        case 'ai-agents':
+          return 'ai-agents';
+        case 'charts':
+          return 'market-analytics';
+        case 'cybersecurity':
+        case 'cyber-playground':
+          return 'security-tools';
+        case 'twitter-bot':
+        case 'telegram-bot':
+        case 'substack-bot':
+        case 'social':
+          return 'social-features';
+        case 'inspector':
+        default:
+          return 'transaction-builder'; // Default to transaction builder
+      }
+    };
+
     content = (
       <ClientOnly>
-        {/* Page Loader Overlay */}
-        <PageLoader
+        {/* Feature Highlight Loader Overlay */}
+        <FeatureHighlightLoader
           isLoading={isPageLoading}
-          duration={3000}
+          duration={4000}
           onAnimationComplete={() => setIsPageLoading(false)}
-          quote={getLoadingQuote()}
-          context={getLoadingContext()}
+          currentFeature={getCurrentFeatureId(activeView)}
+          onFeatureClick={(featureId) => {
+            if (featureId === 'transaction-builder') {
+              setActiveView('builder');
+            } else if (featureId === 'ai-agents') {
+              setActiveView('ai-agents');
+            } else if (featureId === 'decentralized-exchange') {
+              setActiveView('charts'); // DEX features in charts view
+            } else if (featureId === 'security-tools') {
+              setActiveView('cybersecurity');
+            } else if (featureId === 'market-analytics') {
+              setActiveView('charts');
+            } else if (featureId === 'social-features') {
+              setActiveView('twitter-bot'); // Start with Twitter bot
+            }
+          }}
+          onEnterApp={() => {
+            // Stay on current view when entering
+            setIsPageLoading(false);
+          }}
         />
         
         <div className="h-screen flex flex-col bg-gray-900">

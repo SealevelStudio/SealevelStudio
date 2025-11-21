@@ -38,6 +38,7 @@ import { executeArbitrage, validateOpportunity, calculateSafeSlippage, Execution
 import { getUserMessage } from '../lib/error-handling';
 import { AnimatedInput } from './ui/AnimatedInput';
 import { AnimatedSelect } from './ui/AnimatedSelect';
+import { Arbitrage3DVisualization } from './charts/Arbitrage3DVisualization';
 
 interface ArbitrageScannerProps {
   onBuildTransaction?: (opportunity: ArbitrageOpportunity) => void;
@@ -160,6 +161,11 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
         }
         
         setOpportunities(detected);
+        
+        // Automatically show the first result (even if unprofitable) for immediate feedback
+        if (detected.length > 0) {
+          setSelectedOpportunity(detected[0]);
+        }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -264,6 +270,33 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
       setExecuting(null);
     }
   }, [wallet, connection, handleScan]);
+
+  const handleTrainAI = useCallback((opportunity: ArbitrageOpportunity) => {
+    // Save opportunity to training context
+    const trainingData = {
+      path: opportunity.path,
+      outcome: opportunity.netProfit > 0 ? 'positive' : 'negative',
+      timestamp: new Date().toISOString(),
+      profit: opportunity.profit,
+      gas: opportunity.gasEstimate
+    };
+    
+    try {
+      // Save to local storage for persistent training context
+      const existing = localStorage.getItem('sealevel-ai-training-data');
+      const data = existing ? JSON.parse(existing) : [];
+      data.push(trainingData);
+      localStorage.setItem('sealevel-ai-training-data', JSON.stringify(data));
+      
+      // Also log for current session
+      console.log('Training data retained:', trainingData);
+      
+      // Show feedback (could add a toast here, but alert is quick for now)
+      alert('Path context saved for AI training!');
+    } catch (e) {
+      console.error('Failed to save training data', e);
+    }
+  }, []);
 
   return (
     <>
@@ -379,6 +412,15 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
                 type="checkbox"
                 checked={config.autoRefresh}
                 onChange={(e) => setConfig(prev => ({ ...prev, autoRefresh: e.target.checked }))}
+                className="mr-2"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Show Unprofitable</label>
+              <input
+                type="checkbox"
+                checked={config.showUnprofitable || false}
+                onChange={(e) => setConfig(prev => ({ ...prev, showUnprofitable: e.target.checked }))}
                 className="mr-2"
               />
             </div>
@@ -621,66 +663,17 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
         )}
       </div>
 
-      {/* Opportunity Details Modal */}
+      {/* Opportunity Details Visualization (3D) */}
       {selectedOpportunity && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedOpportunity(null)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Arbitrage Details</h2>
-              <button onClick={() => setSelectedOpportunity(null)} className="text-slate-400 hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-slate-400">Profit</div>
-                  <div className="text-lg font-bold text-green-400">{selectedOpportunity.profit.toFixed(4)} SOL</div>
-                </div>
-                <div>
-                  <div className="text-sm text-slate-400">Profit %</div>
-                  <div className="text-lg font-bold text-teal-400">{selectedOpportunity.profitPercent.toFixed(2)}%</div>
-                </div>
-                <div>
-                  <div className="text-sm text-slate-400">Net Profit</div>
-                  <div className="text-lg font-bold">{selectedOpportunity.netProfit.toFixed(4)} SOL</div>
-                </div>
-                <div>
-                  <div className="text-sm text-slate-400">Gas Estimate</div>
-                  <div className="text-lg">{selectedOpportunity.gasEstimate} lamports</div>
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-slate-400 mb-2">Path Steps</div>
-                <div className="space-y-2">
-                  {selectedOpportunity.steps.map((step, i) => (
-                    <div key={i} className="bg-slate-800 p-3 rounded flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{step.tokenIn.symbol}</span>
-                        <ArrowRight size={14} />
-                        <span className="font-medium">{step.tokenOut.symbol}</span>
-                        <span className="text-xs text-slate-500 ml-2">via {step.dex}</span>
-                      </div>
-                      <div className="text-sm text-slate-400">
-                        Fee: {step.fee} bps
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  handleBuildTransaction(selectedOpportunity);
-                  setSelectedOpportunity(null);
-                }}
-                className="w-full py-2 bg-teal-600 hover:bg-teal-700 rounded flex items-center justify-center gap-2"
-              >
-                <Zap size={16} />
-                Build Transaction
-              </button>
-            </div>
-          </div>
-        </div>
+        <Arbitrage3DVisualization
+          opportunity={selectedOpportunity}
+          onTrainAI={() => handleTrainAI(selectedOpportunity)}
+          onExecute={() => {
+            handleExecute(selectedOpportunity);
+            // Don't close automatically, let user see result or close manually
+          }}
+          onClose={() => setSelectedOpportunity(null)}
+        />
       )}
     </div>
     </>

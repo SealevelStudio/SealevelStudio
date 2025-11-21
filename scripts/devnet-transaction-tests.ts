@@ -128,7 +128,7 @@ Examples:
       : process.env.NEXT_PUBLIC_SOLANA_RPC_DEVNET || 'https://api.devnet.solana.com');
 
   const minBalanceArg = getArg('--min-balance');
-  const minBalanceSol = minBalanceArg ? Number(minBalanceArg) : 2; // default 2 SOL buffer
+  const minBalanceSol = minBalanceArg ? Number(minBalanceArg) : 1; // default 1 SOL buffer
 
   return {
     network,
@@ -180,9 +180,20 @@ async function ensureBalance(
   const neededLamports = Math.ceil((minBalanceSol - balanceSol) * LAMPORTS_PER_SOL);
   const requestLamports = Math.max(neededLamports, LAMPORTS_PER_SOL);
   console.log(`💧 Requesting devnet airdrop of ${(requestLamports / LAMPORTS_PER_SOL).toFixed(2)} SOL...`);
-  const signature = await connection.requestAirdrop(payer.publicKey, requestLamports);
-  await connection.confirmTransaction(signature, 'confirmed');
-  console.log(`   Airdrop signature: ${signature}`);
+  
+  try {
+    const signature = await connection.requestAirdrop(payer.publicKey, requestLamports);
+    await connection.confirmTransaction(signature, 'confirmed');
+    console.log(`   Airdrop signature: ${signature}`);
+  } catch (error) {
+    console.warn(`   ⚠️ Airdrop failed: ${error instanceof Error ? error.message : String(error)}`);
+    // If we have at least 0.1 SOL, we can probably still run the tests
+    if (balanceSol > 0.1) {
+      console.log(`   ⚠️ Proceeding with existing balance: ${balanceSol.toFixed(4)} SOL`);
+      return;
+    }
+    throw error;
+  }
 }
 
 function expectTemplate(id: string) {

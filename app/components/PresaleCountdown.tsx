@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { AlarmClock, BellRing, CheckCircle2, Calendar } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { AlarmClock, BellRing, CheckCircle2, Calendar, X, Move } from 'lucide-react';
 
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -56,6 +56,11 @@ export function PresaleCountdown() {
   const targetDate = useMemo(() => resolveTargetDate(), []);
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(() => calculateTimeLeft(targetDate));
   const [reminderSet, setReminderSet] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [position, setPosition] = useState({ x: 24, y: typeof window !== 'undefined' ? window.innerHeight - 200 : 600 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -106,14 +111,84 @@ export function PresaleCountdown() {
     window.URL.revokeObjectURL(url);
   }, [targetDate]);
 
+  // Drag functionality
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const maxX = window.innerWidth - 320; // Account for component width
+    const maxY = window.innerHeight - 200; // Account for component height
+
+    setPosition({
+      x: Math.max(0, Math.min(e.clientX - dragOffset.x, maxX)),
+      y: Math.max(0, Math.min(e.clientY - dragOffset.y, maxY)),
+    });
+  }, [isDragging, dragOffset]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+  }, []);
+
   const formattedDate = targetDate.toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 
+  if (!isVisible) return null;
+
   return (
-    <div className="fixed bottom-3 left-3 sm:bottom-6 sm:left-6 z-[10050] pointer-events-none">
+    <div
+      ref={containerRef}
+      className="fixed z-[10050] pointer-events-none"
+      style={{
+        left: position.x,
+        top: position.y,
+        cursor: isDragging ? 'grabbing' : 'default'
+      }}
+    >
       <div className="w-[calc(100vw-1.5rem)] sm:w-80 pointer-events-auto rounded-2xl border border-white/10 bg-gray-950/90 backdrop-blur-lg shadow-2xl shadow-blue-900/30 p-4 text-gray-100">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div
+            className="flex items-center gap-2 cursor-move select-none"
+            onMouseDown={handleMouseDown}
+          >
+            <Move size={14} className="text-gray-400" />
+            <span className="text-xs text-gray-400">Drag</span>
+          </div>
+          <button
+            onClick={handleClose}
+            className="p-1 hover:bg-gray-800 rounded transition-colors"
+            title="Close countdown"
+          >
+            <X size={14} className="text-gray-400 hover:text-gray-200" />
+          </button>
+        </div>
+
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-blue-300 flex items-center gap-2">

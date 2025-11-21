@@ -38,6 +38,8 @@ import { PublicKey } from '@solana/web3.js';
 import { UnifiedAIAgents } from './UnifiedAIAgents';
 import { ArbitragePanel } from './ArbitragePanel';
 import { ArbitrageOpportunity } from '../lib/pools/types';
+import { AdvancedInstructionCard } from './AdvancedInstructionCard';
+import { TemplateSelectorModal } from './TemplateSelectorModal';
 
 // --- Block to Instruction Template Mapping ---
 const BLOCK_TO_TEMPLATE: Record<string, string> = {
@@ -505,7 +507,12 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
   const [isExecuting, setIsExecuting] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [builtTransaction, setBuiltTransaction] = useState<any>(null);
-  const [transactionCost, setTransactionCost] = useState<{ lamports: number; sol: number } | null>(null);
+  const [transactionCost, setTransactionCost] = useState<{
+    lamports: number;
+    sol: number;
+    platformFee: { lamports: number; sol: number };
+    total: { lamports: number; sol: number };
+  } | null>(null);
   
   // Simple mode state
   const [simpleWorkflow, setSimpleWorkflow] = useState<SimpleBlock[]>([]);
@@ -912,7 +919,9 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       setTransactionCost(cost);
 
       addLog(`Transaction built successfully!`, 'success');
-      addLog(`Estimated cost: ${cost.sol.toFixed(9)} SOL (${cost.lamports} lamports)`, 'info');
+      addLog(`Base transaction cost: ${cost.sol.toFixed(9)} SOL (${cost.lamports} lamports)`, 'info');
+      addLog(`Platform fee: ${cost.platformFee.sol.toFixed(9)} SOL (${cost.platformFee.lamports} lamports)`, 'info');
+      addLog(`Total estimated cost: ${cost.total.sol.toFixed(9)} SOL (${cost.total.lamports} lamports)`, 'info');
       addLog(`Instructions: ${instructions.length}`, 'info');
 
       for (let i = 0; i < instructions.length; i++) {
@@ -1120,9 +1129,19 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
               )}
               
               {transactionCost && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs">
-                  <span className="text-slate-400">Cost:</span>
-                  <span className="text-green-400 font-mono">{transactionCost.sol.toFixed(9)} SOL</span>
+                <div className="flex flex-col gap-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Base Cost:</span>
+                    <span className="text-green-400 font-mono">{transactionCost.sol.toFixed(9)} SOL</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Platform Fee:</span>
+                    <span className="text-yellow-400 font-mono">{transactionCost.platformFee.sol.toFixed(9)} SOL</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-600 pt-1 mt-1">
+                    <span className="text-slate-300 font-medium">Total:</span>
+                    <span className="text-white font-mono font-bold">{transactionCost.total.sol.toFixed(9)} SOL</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -1813,273 +1832,5 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
 }
 
 // Advanced Mode Instruction Card
-function AdvancedInstructionCard({ 
-  instruction, 
-  index, 
-  onUpdateAccount, 
-  onUpdateArg, 
-  onRemove,
-  validationErrors,
-  onCopyAddress,
-  copiedAddresses,
-  justCopied,
-  focusedInputField,
-  setFocusedInputField
-}: {
-  instruction: BuiltInstruction;
-  index: number;
-  onUpdateAccount: (name: string, value: string) => void;
-  onUpdateArg: (name: string, value: any) => void;
-  onRemove: () => void;
-  validationErrors: string[];
-  onCopyAddress: (address: string) => void;
-  copiedAddresses: string[];
-  justCopied: string | null;
-  focusedInputField: string | null;
-  setFocusedInputField: (field: string | null) => void;
-}) {
-  const [expanded, setExpanded] = useState(true);
 
-  return (
-    <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-lg">
-            <span className="text-white font-bold text-sm">{index + 1}</span>
-          </div>
-          <div>
-            <h3 className="font-semibold text-white">{instruction.template.name}</h3>
-            <p className="text-sm text-gray-400">{instruction.template.description}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          {validationErrors.length === 0 ? (
-            <CheckCircle className="h-5 w-5 text-green-400" />
-          ) : (
-            <AlertCircle className="h-5 w-5 text-red-400" />
-          )}
-          
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="p-1 hover:bg-gray-700 rounded"
-          >
-            <Zap className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-          </button>
-          
-          <button
-            onClick={onRemove}
-            className="p-1 hover:bg-red-700 hover:text-red-400 rounded text-gray-400"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="p-4 space-y-4">
-          {validationErrors.length > 0 && (
-            <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-3">
-              <h4 className="text-red-400 font-medium mb-2">Validation Errors:</h4>
-              <ul className="text-red-300 text-sm space-y-1">
-                {validationErrors.map((error, i) => (
-                  <li key={i}>• {error}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div>
-            <h4 className="font-medium text-gray-300 mb-3">Accounts</h4>
-            <div className="space-y-3">
-              {instruction.template.accounts.map(account => {
-                const accountValue = instruction.accounts[account.name] || '';
-                const isAddress = accountValue.length > 20; // Simple heuristic for Solana addresses
-                return (
-                  <div key={account.name} className="flex items-center space-x-3">
-                    <div className="flex-1 relative">
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        {account.name}
-                        {account.type === 'signer' && <span className="text-yellow-400 ml-1">(Signer)</span>}
-                        {account.type === 'writable' && <span className="text-blue-400 ml-1">(Writable)</span>}
-                        {account.isOptional && <span className="text-gray-500 ml-1">(Optional)</span>}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={accountValue}
-                          onFocus={() => isAddress && setFocusedInputField(`advanced-${index}-${account.name}`)}
-                          onBlur={() => setTimeout(() => setFocusedInputField(null), 200)}
-                          onChange={(e) => onUpdateAccount(account.name, e.target.value)}
-                          placeholder={account.description}
-                          className="w-full px-3 py-2 pr-10 bg-gray-900 border border-gray-700 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                        {isAddress && accountValue && (
-                          <button
-                            onClick={() => onCopyAddress(accountValue)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-purple-400 hover:bg-gray-800 rounded transition-colors"
-                            title="Copy address"
-                          >
-                            {justCopied === accountValue ? (
-                              <ClipboardCheck size={14} className="text-green-400" />
-                            ) : (
-                              <Clipboard size={14} />
-                            )}
-                          </button>
-                        )}
-                        {isAddress && copiedAddresses.length > 0 && focusedInputField === `advanced-${index}-${account.name}` && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-                            {copiedAddresses.slice(0, 5).map((addr, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => {
-                                  onUpdateAccount(account.name, addr);
-                                  onCopyAddress(addr);
-                                  setFocusedInputField(null);
-                                }}
-                                className="w-full text-left px-3 py-2 text-xs hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
-                              >
-                                <div className="font-mono text-gray-300 truncate">{addr}</div>
-                                <div className="text-gray-500 text-[10px] mt-0.5">{addr.slice(0, 8)}...{addr.slice(-8)}</div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">{account.description}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {instruction.template.args.length > 0 && (
-            <div>
-              <h4 className="font-medium text-gray-300 mb-3">Arguments</h4>
-              <div className="space-y-3">
-                {instruction.template.args.map(arg => (
-                  <div key={arg.name} className="flex items-center space-x-3">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        {arg.name} <span className="text-purple-400">({arg.type})</span>
-                      </label>
-                      {arg.type === 'bool' ? (
-                        <select
-                          value={instruction.args[arg.name] || false}
-                          onChange={(e) => onUpdateArg(arg.name, e.target.value === 'true')}
-                          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        >
-                          <option value="false">False</option>
-                          <option value="true">True</option>
-                        </select>
-                      ) : arg.type === 'pubkey' ? (
-                        <input
-                          type="text"
-                          value={instruction.args[arg.name] || ''}
-                          onChange={(e) => onUpdateArg(arg.name, e.target.value)}
-                          placeholder="Public key"
-                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                      ) : (
-                        <input
-                          type={arg.type.startsWith('u') || arg.type.startsWith('i') ? 'number' : 'text'}
-                          value={instruction.args[arg.name] || ''}
-                          onChange={(e) => {
-                            const value = arg.type.startsWith('u') || arg.type.startsWith('i') 
-                              ? Number(e.target.value) 
-                              : e.target.value;
-                            onUpdateArg(arg.name, value);
-                          }}
-                          placeholder={arg.description}
-                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                      )}
-                      <p className="text-xs text-gray-500 mt-1">{arg.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Template Selector Modal
-function TemplateSelectorModal({ 
-  categories, 
-  selectedCategory, 
-  onCategoryChange, 
-  templates, 
-  onSelectTemplate, 
-  onClose 
-}: {
-  categories: any[];
-  selectedCategory: string;
-  onCategoryChange: (category: string) => void;
-  templates: InstructionTemplate[];
-  onSelectTemplate: (template: InstructionTemplate) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-xl font-bold text-white">Add Instruction</h2>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-800 rounded"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        
-        <div className="p-4">
-          <div className="flex space-x-2 mb-4 overflow-x-auto">
-            {categories.map(category => (
-              <button
-                key={category.id}
-                onClick={() => onCategoryChange(category.id)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  selectedCategory === category.id
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                <span>{category.icon}</span>
-                <span>{category.name}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-            {templates.map(template => (
-              <TemplateTooltip key={template.id} template={template}>
-                <button
-                  onClick={() => onSelectTemplate(template)}
-                  className="p-4 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700/50 hover:border-purple-500/50 rounded-lg text-left transition-colors group w-full"
-                >
-                  <h3 className="font-semibold text-white group-hover:text-purple-300 transition-colors">
-                    {template.name}
-                  </h3>
-                  <p className="text-sm text-gray-400 mt-1 line-clamp-2">
-                    {template.description}
-                  </p>
-                  <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                    <span>{template.accounts.length} accounts</span>
-                    <span>{template.args.length} args</span>
-                  </div>
-                </button>
-              </TemplateTooltip>
-            ))}
-          </div>
-        </div>
-      </div>
-      </div>
-    </div>
-  );
-}
 
