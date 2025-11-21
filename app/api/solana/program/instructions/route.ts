@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         try {
           const tx = await connection.getTransaction(sigInfo.signature, {
             maxSupportedTransactionVersion: 0,
-            commitment,
+            commitment: commitment === 'processed' ? 'confirmed' : commitment,
           });
 
           if (!tx) return null;
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
             slot: sigInfo.slot,
             blockTime: sigInfo.blockTime,
             err: sigInfo.err,
-            memo: tx.transaction.message.memo ? Buffer.from(tx.transaction.message.memo).toString('utf8') : null,
+            memo: (tx.transaction.message as any).memo ? Buffer.from((tx.transaction.message as any).memo).toString('utf8') : null,
             instructions: tx.transaction.message.compiledInstructions?.map(ix => ({
               programIdIndex: ix.programIdIndex,
               accounts: ix.accountKeyIndexes,

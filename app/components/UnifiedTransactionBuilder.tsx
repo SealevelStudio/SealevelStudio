@@ -1051,11 +1051,7 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         <main 
           className="flex-1 flex flex-col relative min-h-0 overflow-hidden"
           style={{
-            // Dot grid background
-            backgroundImage: 'radial-gradient(#1e293b_1px, transparent_1px)',
-            backgroundSize: '16px 16px',
             backgroundColor: '#0f172a', // slate-950
-            // Sea Level Studios logo as opaque background behind dot grid
             position: 'relative',
           }}
         >
@@ -1063,19 +1059,28 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: 'url(/sea-level-logo.png)',
-              backgroundSize: 'contain',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              opacity: 0.08, // Very subtle, opaque background
               zIndex: 0,
             }}
-          />
+          >
+            <img
+              src="/transaction-builder-logo.jpeg"
+              alt="Transaction Builder Logo"
+              className="absolute inset-0 w-full h-full object-contain opacity-[0.08]"
+              style={{
+                objectPosition: 'center',
+              }}
+              onError={(e) => {
+                // Fallback if logo doesn't exist - hide it
+                console.warn('Transaction builder logo not found at /transaction-builder-logo.jpeg');
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
           {/* Dot grid overlay */}
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: 'radial-gradient(#1e293b_1px, transparent_1px)',
+              backgroundImage: 'radial-gradient(circle, #1e293b 1px, transparent 1px)',
               backgroundSize: '16px 16px',
               zIndex: 1,
             }}
@@ -1130,7 +1135,7 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
 
           <div className="flex-1 overflow-y-auto p-8 pt-20 flex flex-col items-center gap-4 min-h-0 relative z-10">
             {simpleWorkflow.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-4 opacity-50 relative w-full">
+              <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-4 opacity-50 relative w-full z-2">
                 <div className="relative z-10 flex flex-col items-center gap-4">
                   <Layers size={48} className="text-slate-700" />
                   <p>Drag & drop blocks here to build your transaction</p>
@@ -1564,6 +1569,16 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       {/* Mode Toggle Header */}
       <div className="border-b border-gray-700 bg-gray-800/50 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
+          {/* Logo */}
+          <img
+            src="/sea-level-logo.png"
+            alt="Sealevel Studio"
+            className="h-8 w-auto"
+            style={{ maxHeight: '32px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
           <button
             onClick={onBack || (() => {})}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"

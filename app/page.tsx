@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getMint } from '@solana/spl-token';
-import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck, Lock, Shield, Bot, Book, BarChart3, Brain, DollarSign, Coins, Droplet, Twitter, LineChart, MessageCircle, Layers } from 'lucide-react';
+import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck, Lock, Shield, Bot, Book, BarChart3, Brain, DollarSign, Coins, Droplet, Twitter, LineChart, MessageCircle, Layers, ArrowLeft } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WalletButton from './components/WalletButton';
 import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilder';
@@ -29,6 +29,7 @@ import { TransactionBundler } from './components/TransactionBundler';
 import { AdvertisingBots } from './components/AdvertisingBots';
 import { SocialFeatures } from './components/SocialFeatures';
 import { ServiceBot } from './components/ServiceBot';
+import { PageLoader } from './components/PageLoader';
 import { AdminAnalytics } from './components/AdminAnalytics';
 import { SealPresale } from './components/SealPresale';
 import { AICyberPlayground } from './components/AICyberPlayground';
@@ -40,6 +41,7 @@ import { TwitterBot } from './components/TwitterBot';
 import { SubstackBot } from './components/SubstackBot';
 import { TelegramBot } from './components/TelegramBot';
 import { ChartsView } from './components/ChartsView';
+import { DisclaimerAgreement } from './components/DisclaimerAgreement';
 
 // Suppress hydration warnings during development
 if (typeof window !== 'undefined') {
@@ -654,10 +656,20 @@ function Header({
             ← Back to Home
           </button>
         )}
-      <div className="text-xl font-bold tracking-tighter">
-        <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-500">
-          Sealevel Studio
-        </span>
+        {/* Logo */}
+        <img
+          src="/sea-level-logo.png"
+          alt="Sealevel Studio"
+          className="h-10 w-auto"
+          style={{ maxHeight: '40px' }}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+        <div className="text-xl font-bold tracking-tighter">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-500">
+            Sealevel Studio
+          </span>
         </div>
       </div>
       <div className="flex items-center space-x-4">
@@ -683,7 +695,15 @@ function Header({
 }
 
 // 2. Sidebar Component
-function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveView: (view: string) => void }) {
+function Sidebar({ 
+  activeView, 
+  setActiveView,
+  onViewChange 
+}: { 
+  activeView: string; 
+  setActiveView: (view: string) => void;
+  onViewChange?: () => void;
+}) {
   const navItems = [
     // Core Tools
     { id: 'inspector', label: 'Account Inspector', icon: <Search className="h-4 w-4" />, section: 'core' },
@@ -737,7 +757,12 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
               {coreItems.map((item) => (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
                     className={`
                       flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
                       transition-colors
@@ -765,7 +790,12 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
               {revenueItems.map((item) => (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
                     className={`
                       flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
                       transition-colors
@@ -798,7 +828,12 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
               {aiItems.map((item) => (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
                     className={`
                       flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
                       transition-colors
@@ -826,7 +861,12 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
               {toolsItems.map((item) => (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
                     className={`
                       flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
                       transition-colors
@@ -854,7 +894,12 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
               {navItems.filter(item => item.section === 'social').map((item) => (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
                     className={`
                       flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
                       transition-colors
@@ -882,7 +927,12 @@ function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveV
               {otherItems.map((item) => (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
                     className={`
                       flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
                       transition-colors
@@ -1139,7 +1189,9 @@ function ExporterView() {
 // Main App Component
 export default function App() {
   // ALL HOOKS MUST BE CALLED AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
-  const [currentScreen, setCurrentScreen] = useState<'landing' | 'tutorial' | 'app'>('landing');
+  const [currentScreen, setCurrentScreen] = useState<'landing' | 'disclaimer' | 'tutorial' | 'app'>('landing');
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [previousView, setPreviousView] = useState<string>('');
   const [activeView, setActiveView] = useState('inspector');
   const [rdConsoleMinimized, setRdConsoleMinimized] = useState(true);
   const [selectedBlockchain, setSelectedBlockchain] = useState<BlockchainType | null>('solana');
@@ -1167,6 +1219,7 @@ export default function App() {
   }, [selectedBlockchain]);
 
   // Load selected blockchain from localStorage, default to Solana
+  // Also check for disclaimer agreement on initial load
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sealevel-blockchain');
@@ -1175,6 +1228,13 @@ export default function App() {
       } else {
         // Default to Solana if nothing saved
         setSelectedBlockchain('solana');
+      }
+      
+      // Check if disclaimer needs to be shown on initial load
+      const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
+      if (!disclaimerAgreed && currentScreen === 'landing') {
+        // Set disclaimer screen if user hasn't agreed yet
+        setCurrentScreen('disclaimer');
       }
     }
   }, []);
@@ -1195,6 +1255,26 @@ export default function App() {
       setSelectedBlockchain('solana');
     }
     
+    // Check if disclaimer needs to be shown
+    if (typeof window !== 'undefined') {
+      const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
+      if (!disclaimerAgreed) {
+        setCurrentScreen('disclaimer');
+        return;
+      }
+    }
+    
+    // Proceed to tutorial or app
+    setIsPageLoading(true);
+    if (shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler')) {
+      setCurrentScreen('tutorial');
+    } else {
+      setCurrentScreen('app');
+    }
+  };
+
+  const handleDisclaimerAgree = () => {
+    setIsPageLoading(true);
     if (shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler')) {
       setCurrentScreen('tutorial');
     } else {
@@ -1203,56 +1283,72 @@ export default function App() {
   };
 
   const handleBackToLanding = () => {
+    setIsPageLoading(true); // Show loading animation when going back to landing
     setCurrentScreen('landing');
   };
 
-  if (currentScreen === 'landing') {
-    return <LandingPage onGetStarted={handleGetStarted} />;
-  }
+  let content: React.ReactNode;
 
-  if (currentScreen === 'tutorial') {
-    return (
+  if (currentScreen === 'landing') {
+    content = <LandingPage onGetStarted={handleGetStarted} />;
+  } else if (currentScreen === 'disclaimer') {
+    content = (
+      <div className="min-h-screen bg-gray-900">
+        <DisclaimerAgreement onAgree={handleDisclaimerAgree} />
+      </div>
+    );
+  } else if (currentScreen === 'tutorial') {
+    content = (
       <TutorialFlow 
         onComplete={() => setCurrentScreen('app')} 
       />
     );
+  } else {
+    // Main app interface
+    const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'admin' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot' || activeView === 'presale' || activeView === 'cyber-playground' || activeView === 'tools' || activeView === 'revenue' || activeView === 'rent-reclaimer' || activeView === 'faucet' || activeView === 'twitter-bot' || activeView === 'substack-bot' || activeView === 'telegram-bot' || activeView === 'charts';
+
+    content = (
+      <ClientOnly>
+        {/* Page Loader Overlay */}
+        <PageLoader isLoading={isPageLoading} duration={3000} onAnimationComplete={() => setIsPageLoading(false)} />
+        
+        <div className="h-screen flex flex-col bg-gray-900">
+          {!isFullScreenView && (
+            <Header 
+              network={network} 
+              setNetwork={setNetwork} 
+              networks={NETWORKS} 
+              wallet={<WalletButton />}
+              onBackToLanding={handleBackToLanding}
+            />
+          )}
+          
+          <div className="flex-1 flex overflow-hidden">
+            {!isFullScreenView && (
+              <Sidebar 
+                activeView={activeView} 
+                setActiveView={setActiveView}
+                onViewChange={() => setIsPageLoading(true)}
+              />
+            )}
+            <MainContent 
+              activeView={activeView}
+              setActiveView={setActiveView}
+              connection={connection} 
+              network={network} 
+              publicKey={publicKey} 
+            />
+          </div>
+        </div>
+        
+        {/* R&D Console - Floating (always available) */}
+        <AdvancedRAndDConsole 
+          initialMinimized={rdConsoleMinimized}
+          onToggle={setRdConsoleMinimized}
+        />
+      </ClientOnly>
+    );
   }
 
-  // Main app interface
-  const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'admin' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot' || activeView === 'presale' || activeView === 'cyber-playground' || activeView === 'tools' || activeView === 'revenue' || activeView === 'rent-reclaimer' || activeView === 'faucet' || activeView === 'twitter-bot' || activeView === 'substack-bot' || activeView === 'telegram-bot' || activeView === 'charts';
-  
-  return (
-    <ClientOnly>
-      <div className="h-screen flex flex-col bg-gray-900">
-        {!isFullScreenView && (
-          <Header 
-            network={network} 
-            setNetwork={setNetwork} 
-            networks={NETWORKS} 
-            wallet={<WalletButton />}
-            onBackToLanding={handleBackToLanding}
-          />
-        )}
-        
-        <div className="flex-1 flex overflow-hidden">
-          {!isFullScreenView && (
-            <Sidebar activeView={activeView} setActiveView={setActiveView} />
-          )}
-          <MainContent 
-            activeView={activeView}
-            setActiveView={setActiveView}
-            connection={connection} 
-            network={network} 
-            publicKey={publicKey} 
-          />
-        </div>
-      </div>
-      
-      {/* R&D Console - Floating (always available) */}
-      <AdvancedRAndDConsole 
-        initialMinimized={rdConsoleMinimized}
-        onToggle={setRdConsoleMinimized}
-      />
-    </ClientOnly>
-  );
+  return content;
 }

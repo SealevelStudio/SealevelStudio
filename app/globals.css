@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure background is always loaded */
+html, body {
+  background-color: #111827; /* bg-gray-900 */
+  min-height: 100vh;
+}
+
+body {
+  background-color: #111827 !important; /* bg-gray-900 */
+}
+
 /* Custom scrollbar for dark mode */
 ::-webkit-scrollbar {
   width: 12px;

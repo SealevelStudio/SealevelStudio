@@ -44,6 +44,7 @@ export interface AttestationClient {
     metadata: AttestationMetadata
   ): Promise<{ txSignature: string; tier: number }>;
   verifyEligibility(usageCount: number): Promise<number>; // Returns tier (0 = not eligible)
+  getTierForUsage(usageCount: number): number; // Helper to get tier locally
   updateThresholds(tier1: number, tier2: number, tier3: number): Promise<string>;
   revokeAttestation(attestationId: number): Promise<string>;
 }

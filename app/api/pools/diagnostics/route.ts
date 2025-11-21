@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       const raydiumProgramId = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8';
       const accounts = await connection.getProgramAccounts(
         new (await import('@solana/web3.js')).PublicKey(raydiumProgramId),
-        { dataSlice: { offset: 0, length: 0 }, limit: 1 }
+        { dataSlice: { offset: 0, length: 0 } }
       );
       diagnostics.checks.programFetch = {
         status: 'success',

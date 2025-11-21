@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { agentRegistry } from '@/app/lib/agents/solana-agent-kit';
-import { getStoredAgent } from '@/app/lib/agents/storage';
+import { agentRegistry, BaseSolanaAgent } from '@/app/lib/agents/solana-agent-kit';
+import { agentStorage } from '@/app/lib/agents/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
       const stored = agentStorage.get(wallet);
       if (stored && stored.agent) {
         agent = stored.agent;
-        agentRegistry.register(agent);
+        if (agent) {
+          agentRegistry.register(agent);
+        }
       }
     }
     

@@ -284,6 +284,16 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
       {/* Header */}
       <div className="relative z-10 border-b border-slate-800/50 glass p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
+          {/* Logo */}
+          <img
+            src="/sea-level-logo.png"
+            alt="Sealevel Studio"
+            className="h-8 w-auto"
+            style={{ maxHeight: '32px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
           {onBack && (
             <button
               onClick={onBack}

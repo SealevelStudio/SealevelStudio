@@ -5,7 +5,7 @@
  */
 
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
-import { BaseSolanaAgent, AgentConfig, AgentExecutionResult } from './solana-agent-kit';
+import { BaseSolanaAgent, AgentConfig, AgentExecutionResult, AgentStrategy } from './solana-agent-kit';
 
 /**
  * LLM Integration for Agent Decision Making

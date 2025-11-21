@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { title, body, status = 'draft', scheduledFor } = body;
+    const requestBody = await request.json();
+    const { title, body, status = 'draft', scheduledFor } = requestBody;
 
     if (!title || !body) {
       return NextResponse.json(

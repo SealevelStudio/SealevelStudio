@@ -10,7 +10,7 @@ import {
   ProviderConfig,
   ConsensusQueryOptions,
 } from '../types';
-import { detectGPU, checkDockerEndpoint, getPerformanceMetrics, type GPUInfo, type PerformanceMetrics } from '../gpu-utils';
+import { detectGPU, checkDockerEndpoint, getPerformanceMetrics, type GPUInfo, type PerformanceMetrics } from '../../gpu-utils';
 
 export interface LocalModelConfig extends ProviderConfig {
   endpoint: string; // e.g., 'http://localhost:11434' for Ollama

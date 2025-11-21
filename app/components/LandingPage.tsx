@@ -8,7 +8,7 @@ interface BlockchainInfo {
   id: BlockchainType;
   name: string;
   description: string;
-  icon: string;
+  logo: string;
   color: string;
   gradient: string;
   status: 'available' | 'coming-soon' | 'beta';
@@ -20,7 +20,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'polkadot',
     name: 'Polkadot',
     description: 'Interoperable blockchain network with parachains',
-    icon: '🔴',
+    logo: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png?v=032',
     color: 'from-pink-500 to-red-600',
     gradient: 'bg-gradient-to-r from-pink-500 to-red-600',
     status: 'available',
@@ -30,7 +30,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'solana',
     name: 'Solana',
     description: 'High-performance blockchain with sub-second finality',
-    icon: '⚡',
+    logo: 'https://cryptologos.cc/logos/solana-sol-logo.png?v=032',
     color: 'from-purple-500 to-indigo-600',
     gradient: 'bg-gradient-to-r from-purple-500 to-indigo-600',
     status: 'available',
@@ -40,7 +40,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'ethereum',
     name: 'Ethereum',
     description: 'The world\'s leading smart contract platform',
-    icon: '💎',
+    logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png?v=032',
     color: 'from-blue-500 to-cyan-600',
     gradient: 'bg-gradient-to-r from-blue-500 to-cyan-600',
     status: 'coming-soon',
@@ -50,7 +50,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'polygon',
     name: 'Polygon',
     description: 'Ethereum scaling solution with low fees',
-    icon: '🔷',
+    logo: 'https://cryptologos.cc/logos/polygon-matic-logo.png?v=032',
     color: 'from-purple-500 to-pink-600',
     gradient: 'bg-gradient-to-r from-purple-500 to-pink-600',
     status: 'coming-soon',
@@ -60,7 +60,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'avalanche',
     name: 'Avalanche',
     description: 'Fast, low-cost smart contracts platform',
-    icon: '❄️',
+    logo: 'https://cryptologos.cc/logos/avalanche-avax-logo.png?v=032',
     color: 'from-red-500 to-orange-600',
     gradient: 'bg-gradient-to-r from-red-500 to-orange-600',
     status: 'coming-soon',
@@ -70,7 +70,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'base',
     name: 'Base',
     description: 'Coinbase\'s L2 built on Optimism',
-    icon: '🔵',
+    logo: 'https://cryptologos.cc/logos/base-base-logo.png?v=032',
     color: 'from-blue-400 to-blue-600',
     gradient: 'bg-gradient-to-r from-blue-400 to-blue-600',
     status: 'coming-soon',
@@ -80,7 +80,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'arbitrum',
     name: 'Arbitrum',
     description: 'Ethereum L2 with optimistic rollups',
-    icon: '🔷',
+    logo: 'https://cryptologos.cc/logos/arbitrum-arb-logo.png?v=032',
     color: 'from-blue-500 to-indigo-600',
     gradient: 'bg-gradient-to-r from-blue-500 to-indigo-600',
     status: 'coming-soon',
@@ -90,7 +90,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'optimism',
     name: 'Optimism',
     description: 'Ethereum L2 with optimistic rollups',
-    icon: '🔴',
+    logo: 'https://cryptologos.cc/logos/optimism-op-logo.png?v=032',
     color: 'from-red-500 to-pink-600',
     gradient: 'bg-gradient-to-r from-red-500 to-pink-600',
     status: 'coming-soon',
@@ -100,7 +100,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'sui',
     name: 'Sui',
     description: 'Next-gen blockchain with parallel execution',
-    icon: '💧',
+    logo: 'https://cryptologos.cc/logos/sui-sui-logo.png?v=032',
     color: 'from-cyan-500 to-blue-600',
     gradient: 'bg-gradient-to-r from-cyan-500 to-blue-600',
     status: 'coming-soon',
@@ -110,7 +110,7 @@ const BLOCKCHAINS: BlockchainInfo[] = [
     id: 'aptos',
     name: 'Aptos',
     description: 'High-throughput Move-based blockchain',
-    icon: '🟢',
+    logo: 'https://cryptologos.cc/logos/aptos-apt-logo.png?v=032',
     color: 'from-green-500 to-emerald-600',
     gradient: 'bg-gradient-to-r from-green-500 to-emerald-600',
     status: 'coming-soon',
@@ -122,6 +122,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
   // Default to Solana
   const [selectedBlockchain, setSelectedBlockchain] = useState<BlockchainType | null>('solana');
   const [showBlockchainSelector, setShowBlockchainSelector] = useState(false);
+  const selectedChainData = selectedBlockchain ? BLOCKCHAINS.find(b => b.id === selectedBlockchain) : null;
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 scroll-smooth">
       <style jsx>{`
@@ -145,23 +146,16 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
       <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-700/50">
         <nav className="container mx-auto max-w-7xl px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            {/* Logo Video */}
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
+            {/* Logo */}
+            <img
+              src="/sea-level-logo.png"
+              alt="Sealevel Studio"
               className="h-10 w-auto"
               style={{ maxHeight: '40px' }}
               onError={(e) => {
-                // Hide video if it fails to load, show fallback
                 e.currentTarget.style.display = 'none';
               }}
-            >
-              <source src="/logo-video.mp4" type="video/mp4" />
-              <source src="/logo-video.webm" type="video/webm" />
-              {/* Fallback text if video doesn't load */}
-            </video>
+            />
             <span className="text-xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-500">
               Sealevel Studio
             </span>
@@ -187,23 +181,17 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
         <section className="relative container mx-auto max-w-7xl px-6 py-20 md:py-32 text-center">
           <div className="absolute inset-0 max-w-4xl mx-auto h-3/4 -translate-y-1/4 bg-purple-900/40 blur-3xl rounded-full -z-10"></div>
           
-          {/* Logo Video - Centered in Hero */}
+          {/* Logo - Centered in Hero */}
           <div className="mb-12 flex justify-center">
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-40 md:h-56 lg:h-64 w-auto"
+            <img
+              src="/sea-level-logo.png"
+              alt="Sealevel Studio"
+              className="h-40 md:h-56 lg:h-64 w-auto rounded-full bg-gray-800/40 p-6"
               style={{ maxHeight: '256px' }}
               onError={(e) => {
-                // Hide video if it fails to load
                 e.currentTarget.style.display = 'none';
               }}
-            >
-              <source src="/logo-video.mp4" type="video/mp4" />
-              <source src="/logo-video.webm" type="video/webm" />
-            </video>
+            />
           </div>
           
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tighter leading-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400 mb-6">
@@ -222,8 +210,12 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 {selectedBlockchain ? (
                   <div className="flex items-center gap-3 px-6 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                    <span className="text-2xl">{BLOCKCHAINS.find(b => b.id === selectedBlockchain)?.icon}</span>
-                    <span className="font-semibold">{BLOCKCHAINS.find(b => b.id === selectedBlockchain)?.name}</span>
+                    <img
+                      src={selectedChainData?.logo || ''}
+                      alt={selectedChainData ? `${selectedChainData.name} logo` : 'Selected blockchain'}
+                      className="h-8 w-8 object-contain rounded"
+                    />
+                    <span className="font-semibold">{selectedChainData?.name}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -266,7 +258,11 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <span className="text-3xl">{blockchain.icon}</span>
+                        <img
+                          src={blockchain.logo}
+                          alt={`${blockchain.name} logo`}
+                          className="h-10 w-10 object-contain rounded"
+                        />
                         {blockchain.status === 'available' && (
                           <span className="px-2 py-0.5 text-xs font-medium bg-green-500/20 text-green-400 rounded-full">
                             Available
@@ -309,7 +305,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
                       }}
                       className="px-6 py-2 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 transition-all"
                     >
-                      Continue with {BLOCKCHAINS.find(b => b.id === selectedBlockchain)?.name}
+                      Continue with {selectedChainData?.name}
                     </button>
                   )}
                 </div>
@@ -330,13 +326,13 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
               }
             }}
             className={`px-8 py-3 text-base font-medium rounded-lg text-white transition-all shadow-lg cursor-pointer ${
-              selectedBlockchain
-                ? BLOCKCHAINS.find(b => b.id === selectedBlockchain)?.gradient + ' hover:opacity-90'
+              selectedChainData
+                ? `${selectedChainData.gradient} hover:opacity-90`
                 : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
             } focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 hover:shadow-indigo-500/30`}
           >
-            {selectedBlockchain
-              ? `Get Started on ${BLOCKCHAINS.find(b => b.id === selectedBlockchain)?.name}`
+            {selectedChainData
+              ? `Get Started on ${selectedChainData.name}`
               : 'Get Started'}
           </button>
         </section>
@@ -548,27 +544,28 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
       {/* Footer */}
       <footer className="border-t border-gray-700/50">
         <div className="container mx-auto max-w-7xl px-6 py-8">
-          <div className="text-center text-gray-500 mb-4">
-            <p>&copy; 2025 Sealevel Studio. All rights reserved.</p>
+          {/* Logo Video - Bottom of Landing Page */}
+          <div className="mb-8 flex justify-center">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              className="h-32 md:h-40 lg:h-48 w-auto opacity-80"
+              style={{ maxHeight: '192px' }}
+              onError={(e) => {
+                console.error('Video failed to load:', e);
+                e.currentTarget.style.display = 'none';
+              }}
+            >
+              <source src="/logo-video.mp4" type="video/mp4" />
+              <source src="/logo-video.webm" type="video/webm" />
+            </video>
           </div>
           
-          {/* Disclaimer */}
-          <div className="max-w-4xl mx-auto mt-6 p-4 bg-gray-800/50 border border-gray-700/50 rounded-lg">
-            <p className="text-xs text-gray-400 leading-relaxed">
-              <strong className="text-gray-300">Disclaimer:</strong> Sealevel Studio provides developer tools and educational resources for building on multiple blockchains. 
-              By using this platform, you acknowledge that:
-            </p>
-            <ul className="text-xs text-gray-400 mt-2 space-y-1 list-disc list-inside ml-2">
-              <li>All transactions and operations are executed at your own risk</li>
-              <li>We are not liable for any financial losses, damages, or consequences resulting from the use of these tools</li>
-              <li>You are solely responsible for verifying transaction details, security practices, and compliance with applicable laws</li>
-              <li>These tools are provided "as-is" without warranties of any kind</li>
-              <li>Cryptocurrency transactions are irreversible—always test thoroughly before executing on mainnet</li>
-            </ul>
-            <p className="text-xs text-gray-500 mt-3 italic">
-              Use these tools responsibly. Always review and understand transactions before signing. 
-              We recommend testing on devnet/testnet first.
-            </p>
+          <div className="text-center text-gray-500 mb-4">
+            <p>&copy; 2025 Sealevel Studio. All rights reserved.</p>
           </div>
         </div>
       </footer>

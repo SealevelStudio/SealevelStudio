@@ -160,7 +160,7 @@ export abstract class BaseSolanaAgent {
   /**
    * Get agent status
    */
-  abstract getStatus(): AgentStatus;
+  abstract getStatus(): Promise<AgentStatus>;
 }
 
 /**
@@ -326,9 +326,9 @@ export class ArbitrageAgent extends BaseSolanaAgent {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        inputMint: opportunity.path.steps[0].inputMint,
-        outputMint: opportunity.path.steps[opportunity.path.steps.length - 1].outputMint,
-        amount: opportunity.path.steps[0].amount.toString(),
+        inputMint: opportunity.path.steps[0].tokenIn.mint,
+        outputMint: opportunity.path.steps[opportunity.path.steps.length - 1].tokenOut.mint,
+        amount: opportunity.path.steps[0].amountIn.toString(),
         taker: this.agentKeypair.publicKey.toString(),
         slippageBps: Math.floor(this.config.slippageTolerance * 100),
         priorityFee: this.config.priorityFee,
@@ -596,7 +596,8 @@ export class AgentRegistry {
    * Start all agents
    */
   async startAll(): Promise<void> {
-    for (const agent of this.agents.values()) {
+    const agentsArray = Array.from(this.agents.values());
+    for (const agent of agentsArray) {
       await agent.start();
     }
   }
@@ -605,7 +606,8 @@ export class AgentRegistry {
    * Stop all agents
    */
   async stopAll(): Promise<void> {
-    for (const agent of this.agents.values()) {
+    const agentsArray = Array.from(this.agents.values());
+    for (const agent of agentsArray) {
       await agent.stop();
     }
   }

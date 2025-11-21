@@ -104,7 +104,10 @@ export async function GET(request: NextRequest) {
     let pools = scanResult.pools;
     if (minLiquidity) {
       pools = pools.filter(pool => {
-        const liquidity = pool.tokenA.reserve * pool.price + pool.tokenB.reserve * (1 / pool.price);
+        // Calculate liquidity from reserves (convert bigint to number for calculation)
+        const reserveA = Number(pool.reserves.tokenA) / Math.pow(10, pool.tokenA.decimals);
+        const reserveB = Number(pool.reserves.tokenB) / Math.pow(10, pool.tokenB.decimals);
+        const liquidity = reserveA * pool.price + reserveB * (1 / pool.price);
         return liquidity >= minLiquidity;
       });
     }
@@ -113,8 +116,21 @@ export async function GET(request: NextRequest) {
     let opportunities = undefined;
     if (includeOpportunities) {
       const { ArbitrageDetector } = await import('@/app/lib/pools/arbitrage');
-      const detector = new ArbitrageDetector();
-      opportunities = await detector.detectArbitrage(pools);
+      const { DEFAULT_SCANNER_CONFIG } = await import('@/app/lib/pools/types');
+      const { Connection } = await import('@solana/web3.js');
+      
+      // Create connection for arbitrage detector
+      const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_FAST_RPC || 
+                     (process.env.NEXT_PUBLIC_HELIUS_API_KEY 
+                       ? `https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`
+                       : process.env.NEXT_PUBLIC_SOLANA_RPC_MAINNET || 'https://api.mainnet-beta.solana.com');
+      const connection = new Connection(rpcUrl, 'confirmed');
+      
+      // Use default scanner config
+      const config = DEFAULT_SCANNER_CONFIG;
+      
+      const detector = new ArbitrageDetector(pools, config, connection);
+      opportunities = await detector.detectOpportunities();
     }
 
     // Group pools by DEX
@@ -133,7 +149,10 @@ export async function GET(request: NextRequest) {
         Object.entries(poolsByDex).map(([dex, dexPools]) => [dex, dexPools.length])
       ),
       totalLiquidity: pools.reduce((sum, pool) => {
-        const liquidity = pool.tokenA.reserve * pool.price + pool.tokenB.reserve * (1 / pool.price);
+        // Calculate liquidity from reserves (convert bigint to number for calculation)
+        const reserveA = Number(pool.reserves.tokenA) / Math.pow(10, pool.tokenA.decimals);
+        const reserveB = Number(pool.reserves.tokenB) / Math.pow(10, pool.tokenB.decimals);
+        const liquidity = reserveA * pool.price + reserveB * (1 / pool.price);
         return sum + liquidity;
       }, 0),
       scanDuration,

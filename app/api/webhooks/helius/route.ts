@@ -211,12 +211,12 @@ async function processTransaction(tx: HeliusWebhookPayload): Promise<ProcessedTr
   }
 
   // Extract swap information if this is a swap
-  if (type === 'SWAP' || result.actions.some(a => a.type === 'swap')) {
+  if (type === 'SWAP' || result.actions.some((a: any) => a.type === 'swap')) {
     result.swap = extractSwapInfo(tx, tokenTransfers);
   }
 
   // Extract pool creation info
-  if (result.actions.some(a => a.type === 'pool_creation')) {
+  if (result.actions.some((a: any) => a.type === 'pool_creation')) {
     result.poolCreation = extractPoolCreationInfo(tx);
   }
 
@@ -246,7 +246,7 @@ async function processTransaction(tx: HeliusWebhookPayload): Promise<ProcessedTr
   }
 
   // Trigger actions based on transaction type with AI analysis
-  if (result.actions.some(a => a.type === 'pool_creation')) {
+  if (result.actions.some((a: any) => a.type === 'pool_creation')) {
     // New pool created - AI pool analysis
     console.log('[Helius Webhook] Pool creation detected, analyzing with AI...');
     
@@ -281,7 +281,7 @@ Format as: Risk Level (Low/Medium/High), Liquidity Potential, Monitoring Recomme
     // await refreshPoolCache();
   }
   
-  if (result.actions.some(a => a.type === 'swap')) {
+  if (result.actions.some((a: any) => a.type === 'swap')) {
     // Swap detected - AI-powered arbitrage analysis and pattern detection
     console.log('[Helius Webhook] Swap detected, analyzing with AI...');
     
@@ -360,7 +360,7 @@ Provide risk assessment with actionable recommendations.`;
     }
   }
   
-  if (result.actions.some(a => a.type === 'liquidity_add' || a.type === 'liquidity_remove')) {
+  if (result.actions.some((a: any) => a.type === 'liquidity_add' || a.type === 'liquidity_remove')) {
     // Liquidity change - AI analysis
     console.log('[Helius Webhook] Liquidity change detected, analyzing with AI...');
     
@@ -369,7 +369,7 @@ Provide risk assessment with actionable recommendations.`;
         const liquidityPrompt = `Analyze this liquidity change transaction:
 
 Transaction: ${result.signature}
-Type: ${result.actions.find(a => a.type === 'liquidity_add' || a.type === 'liquidity_remove')?.type}
+Type: ${result.actions.find((a: any) => a.type === 'liquidity_add' || a.type === 'liquidity_remove')?.type}
 DEX: ${result.dexPrograms.join(', ')}
 
 Assess:

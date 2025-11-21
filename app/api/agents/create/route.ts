@@ -12,11 +12,10 @@ import {
   ArbitrageAgent,
   PortfolioRebalancingAgent,
   LiquidityScanningAgent,
-  AIEnhancedAgent,
   AgentConfig,
   agentRegistry,
 } from '@/app/lib/agents/solana-agent-kit';
-import { LocalLLMProvider } from '@/app/lib/agents/agentipy-integration';
+import { LocalLLMProvider, AIEnhancedAgent } from '@/app/lib/agents/agentipy-integration';
 import { defiPlugins } from '@/app/lib/agents/defi-plugins';
 import { agentStorage, storeAgent } from '@/app/lib/agents/storage';
 

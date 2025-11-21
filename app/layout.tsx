@@ -20,8 +20,12 @@ export const metadata: Metadata = {
   },
   description: 'The Interactive Transaction Simulator & Assembler for Solana',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    icon: [
+      { url: '/sea-level-logo.png', type: 'image/png' },
+      { url: '/favicon.ico', type: 'image/x-icon' },
+    ],
+    apple: '/sea-level-logo.png',
+    shortcut: '/sea-level-logo.png',
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://sealevel-studio.vercel.app'),
 }
@@ -36,6 +40,9 @@ export default function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" type="image/png" href="/sea-level-logo.png" />
+        <link rel="shortcut icon" type="image/png" href="/sea-level-logo.png" />
+        <link rel="apple-touch-icon" href="/sea-level-logo.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
