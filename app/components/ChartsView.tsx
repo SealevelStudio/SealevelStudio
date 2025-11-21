@@ -178,6 +178,20 @@ export function ChartsView({ onBack }: ChartsViewProps) {
 
   return (
     <div className="min-h-screen animated-bg text-white relative">
+      {/* Background Logo Placeholder */}
+      <img
+        src="/sea-level-logo.png"
+        alt="Sealevel Studio Background"
+        className="absolute inset-0 w-full h-full object-contain opacity-[0.05] filter hue-rotate-[90deg] saturate-75 brightness-110 pointer-events-none"
+        style={{
+          objectPosition: 'center right',
+          transform: 'scale(0.6) rotate(-5deg)',
+          zIndex: 0
+        }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
       {/* Header */}
       <div className="relative z-10 border-b border-slate-800/50 glass p-6">
         <div className="max-w-7xl mx-auto flex items-center gap-4">

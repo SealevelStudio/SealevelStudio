@@ -138,6 +138,20 @@ export function ToolsHub({ onBack, onNavigateToTool }: ToolsHubProps) {
 
   return (
     <div className="min-h-screen animated-bg text-white relative">
+      {/* Background Logo Placeholder */}
+      <img
+        src="/sea-level-logo.png"
+        alt="Sealevel Studio Background"
+        className="absolute inset-0 w-full h-full object-contain opacity-[0.05] filter hue-rotate-[90deg] saturate-75 brightness-110 pointer-events-none"
+        style={{
+          objectPosition: 'center right',
+          transform: 'scale(0.6) rotate(-5deg)',
+          zIndex: 0
+        }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />

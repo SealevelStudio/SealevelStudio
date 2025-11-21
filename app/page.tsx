@@ -1184,8 +1184,23 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
 
 function SimulationView({ transactionDraft }: { transactionDraft: any }) {
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-white mb-4">Simulation</h1>
+    <div className="relative">
+      {/* Background Logo Placeholder */}
+      <img
+        src="/sea-level-logo.png"
+        alt="Sealevel Studio Background"
+        className="absolute inset-0 w-full h-full object-contain opacity-[0.05] filter hue-rotate-[90deg] saturate-75 brightness-110 pointer-events-none"
+        style={{
+          objectPosition: 'center right',
+          transform: 'scale(0.6) rotate(-5deg)',
+          zIndex: 0
+        }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+      <div style={{ zIndex: 1, position: 'relative' }}>
+        <h1 className="text-2xl font-bold text-white mb-4">Simulation</h1>
       <p className="text-gray-400">
         Feature coming soon. This is where the "before and after" state diff will be shown.
       </p>
@@ -1197,17 +1212,34 @@ function SimulationView({ transactionDraft }: { transactionDraft: any }) {
           </pre>
         </div>
       )}
+      </div>
     </div>
   );
 }
 
 function ExporterView() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-white mb-4">Code Exporter</h1>
-      <p className="text-gray-400">
-        Feature coming soon. This is where you will get your copy-paste code snippets.
-      </p>
+    <div className="relative">
+      {/* Background Logo Placeholder */}
+      <img
+        src="/sea-level-logo.png"
+        alt="Sealevel Studio Background"
+        className="absolute inset-0 w-full h-full object-contain opacity-[0.05] filter hue-rotate-[90deg] saturate-75 brightness-110 pointer-events-none"
+        style={{
+          objectPosition: 'center right',
+          transform: 'scale(0.6) rotate(-5deg)',
+          zIndex: 0
+        }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+      <div style={{ zIndex: 1, position: 'relative' }}>
+        <h1 className="text-2xl font-bold text-white mb-4">Code Exporter</h1>
+        <p className="text-gray-400">
+          Feature coming soon. This is where you will get your copy-paste code snippets.
+        </p>
+      </div>
     </div>
   );
 }

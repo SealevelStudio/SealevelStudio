@@ -1565,7 +1565,22 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
   );
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex flex-col h-full bg-gray-900 relative">
+      {/* Background Logo Placeholder */}
+      <img
+        src="/sea-level-logo.png"
+        alt="Sealevel Studio Background"
+        className="absolute inset-0 w-full h-full object-contain opacity-[0.05] filter hue-rotate-[90deg] saturate-75 brightness-110 pointer-events-none"
+        style={{
+          objectPosition: 'center right',
+          transform: 'scale(0.6) rotate(-5deg)',
+          zIndex: 0
+        }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+      <div style={{ zIndex: 1, position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Mode Toggle Header */}
       <div className="border-b border-gray-700 bg-gray-800/50 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -2070,6 +2085,7 @@ function TemplateSelectorModal({
             ))}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

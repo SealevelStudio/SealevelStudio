@@ -61,13 +61,18 @@ export async function GET(request: NextRequest) {
       
       for (const opp of opportunities) {
         if (opp.profitPercent >= 0.5) {
+          // Validate path.steps exists and has elements before doing any heavy work
+          if (!opp.path?.steps || opp.path.steps.length === 0) {
+            continue; // Skip this opportunity if path.steps is invalid
+          }
+
           // Risk analysis
           const riskAnalysis = riskAnalyzer.analyzeOpportunity(opp, state.pools);
           
           // Predictive analytics
           let predictedPrice: number | undefined;
           let predictionConfidence: number | undefined;
-          if (predictiveAnalytics && opp.path?.steps && opp.path.steps.length > 0) {
+          if (predictiveAnalytics) {
             const pool = state.pools.find(p => p.id === opp.path.steps[0].pool.id);
             if (pool) {
               const prediction = await predictiveAnalytics.predictPrice(pool, 60);
@@ -78,17 +83,10 @@ export async function GET(request: NextRequest) {
 
           // Pattern matching
           let historicalMatches = 0;
-          if (opp.path?.steps && opp.path.steps.length > 0) {
-            const pool = state.pools.find(p => p.id === opp.path.steps[0].pool.id);
-            if (pool) {
-              const matches = patternMatcher.findMatches(opp, pool);
-              historicalMatches = matches.length;
-            }
-          }
-
-          // Validate path.steps exists and has elements before accessing
-          if (!opp.path?.steps || opp.path.steps.length === 0) {
-            continue; // Skip this opportunity if path.steps is invalid
+          const patternPool = state.pools.find(p => p.id === opp.path.steps[0].pool.id);
+          if (patternPool) {
+            const matches = patternMatcher.findMatches(opp, patternPool);
+            historicalMatches = matches.length;
           }
 
           signals.push({
