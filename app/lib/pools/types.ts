@@ -64,7 +64,7 @@ export interface ArbitragePath {
 export interface ArbitrageOpportunity {
   id: string;
   path: ArbitragePath;
-  type: 'simple' | 'multi_hop' | 'wrap_unwrap' | 'cross_protocol';
+  type: 'simple' | 'multi_hop' | 'wrap_unwrap' | 'cross_protocol' | 'flash_loan' | 'mev';
   profit: number; // Estimated profit in SOL
   profitPercent: number; // Profit as percentage of input
   inputAmount: bigint;
@@ -76,6 +76,10 @@ export interface ArbitrageOpportunity {
   timestamp: Date;
   expiresAt?: Date; // Optional: when opportunity might expire
   jupiterQuote?: any; // Jupiter quote response for execution
+  // Advanced features
+  requiresFlashLoan?: boolean;
+  jitoBundleId?: string;
+  signalType?: 'new_pool' | 'large_swap' | 'lsd_depeg' | 'oracle_update';
 }
 
 export interface ScannerConfig {
@@ -85,6 +89,7 @@ export interface ScannerConfig {
   minProfitPercent: number; // Minimum profit percentage
   maxHops: number; // Maximum hops for multi-hop arbitrage
   enabledDEXs: DEXProtocol[]; // Which DEXs to scan
+  showUnprofitable?: boolean; // Show unprofitable/negative opportunities
 }
 
 export interface FetcherResult {
@@ -114,5 +119,6 @@ export const DEFAULT_SCANNER_CONFIG: ScannerConfig = {
   minProfitPercent: 0.1, // 0.1% minimum
   maxHops: 5,
   enabledDEXs: ['raydium', 'orca', 'jupiter', 'meteora', 'lifinity'],
+  showUnprofitable: true, // Show all results for training context
 };
 

@@ -20,6 +20,7 @@ import {
   Clock,
   DollarSign,
   Percent,
+  ArrowLeft,
 } from 'lucide-react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PoolScanner } from '../lib/pools/scanner';
@@ -31,16 +32,20 @@ import {
   DEFAULT_SCANNER_CONFIG,
   DEXProtocol,
 } from '../lib/pools/types';
-import { ScannerAgent } from './ScannerAgent';
+import { UnifiedAIAgents } from './UnifiedAIAgents';
 import { useUsageTracking } from '../hooks/useUsageTracking';
 import { executeArbitrage, validateOpportunity, calculateSafeSlippage, ExecutionConfig } from '../lib/pools/execution';
 import { getUserMessage } from '../lib/error-handling';
+import { AnimatedInput } from './ui/AnimatedInput';
+import { AnimatedSelect } from './ui/AnimatedSelect';
+import { Arbitrage3DVisualization } from './charts/Arbitrage3DVisualization';
 
 interface ArbitrageScannerProps {
   onBuildTransaction?: (opportunity: ArbitrageOpportunity) => void;
+  onBack?: () => void;
 }
 
-export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) {
+export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScannerProps) {
   const { connection } = useConnection();
   const wallet = useWallet();
   const { trackFeatureUsage, checkFeatureAccess, getTrialStatus } = useUsageTracking();
@@ -100,10 +105,23 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
       setLastScanTime(state.lastScanTime);
       setErrors(state.errors || []);
 
-      // Detect arbitrage opportunities
+      // Detect arbitrage opportunities (with Birdeye optimization if available)
       if (state.pools.length > 0) {
-        const detector = new ArbitrageDetector(state.pools, config, connection);
-        const detected = detector.detectOpportunities();
+        // Initialize Birdeye optimizer if available
+        let birdeyeOptimizer: any = undefined;
+        try {
+          const birdeyeFetcher = scanner.getFetcher('birdeye');
+          if (birdeyeFetcher) {
+            const { BirdeyeOptimizer } = await import('@/app/lib/pools/birdeye-optimizer');
+            // Type assertion - we know it's a BirdeyeFetcher when fetched with 'birdeye' key
+            birdeyeOptimizer = new BirdeyeOptimizer(birdeyeFetcher as any);
+          }
+        } catch (error) {
+          console.error('Error initializing Birdeye optimizer:', error);
+        }
+        
+        const detector = new ArbitrageDetector(state.pools, config, connection, birdeyeOptimizer);
+        const detected = await detector.detectOpportunities();
         
         // Also find unconventional opportunities via AI searcher
         try {
@@ -143,6 +161,11 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
         }
         
         setOpportunities(detected);
+        
+        // Automatically show the first result (even if unprofitable) for immediate feedback
+        if (detected.length > 0) {
+          setSelectedOpportunity(detected[0]);
+        }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -248,19 +271,92 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
     }
   }, [wallet, connection, handleScan]);
 
+  const handleTrainAI = useCallback((opportunity: ArbitrageOpportunity) => {
+    // Save opportunity to training context
+    const trainingData = {
+      path: opportunity.path,
+      outcome: opportunity.netProfit > 0 ? 'positive' : 'negative',
+      timestamp: new Date().toISOString(),
+      profit: opportunity.profit,
+      gas: opportunity.gasEstimate
+    };
+    
+    try {
+      // Save to local storage for persistent training context
+      const existing = localStorage.getItem('sealevel-ai-training-data');
+      const data = existing ? JSON.parse(existing) : [];
+      data.push(trainingData);
+      localStorage.setItem('sealevel-ai-training-data', JSON.stringify(data));
+      
+      // Also log for current session
+      console.log('Training data retained:', trainingData);
+      
+      // Show feedback (could add a toast here, but alert is quick for now)
+      alert('Path context saved for AI training!');
+    } catch (e) {
+      console.error('Failed to save training data', e);
+    }
+  }, []);
+
   return (
     <>
-      <ScannerAgent
+      <UnifiedAIAgents
         opportunities={opportunities}
         pools={pools}
         selectedOpportunity={selectedOpportunity}
         onSelectOpportunity={setSelectedOpportunity}
         onBuildTransaction={handleBuildTransaction}
       />
-      <div className="h-full flex flex-col bg-slate-900 text-white">
+      <div className="h-full flex flex-col animated-bg text-white relative">
+      {/* Background Logo */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{ zIndex: 0 }}
+      >
+        <img
+          src="/sea-level-logo.png"
+          alt="Sealevel Studio Background"
+          className="absolute inset-0 w-full h-full object-contain opacity-[0.06] filter hue-rotate-[270deg] saturate-60 contrast-125"
+          style={{
+            objectPosition: 'bottom left',
+            transform: 'scale(0.7) rotate(10deg)',
+          }}
+          onError={(e) => {
+            console.warn('Background logo not found');
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      </div>
+
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+      </div>
+      
       {/* Header */}
-      <div className="border-b border-slate-800 p-4 flex items-center justify-between">
+      <div className="relative z-10 border-b border-slate-800/50 glass p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
+          {/* Logo */}
+          <img
+            src="/sea-level-logo.png"
+            alt="Sealevel Studio"
+            className="h-8 w-auto"
+            style={{ maxHeight: '32px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft size={18} />
+              <span className="text-sm">Back</span>
+            </button>
+          )}
           <h1 className="text-2xl font-bold">Arbitrage Scanner</h1>
           {lastScanTime && (
             <span className="text-sm text-slate-400 flex items-center gap-1">
@@ -280,7 +376,7 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
           <button
             onClick={handleScan}
             disabled={isScanning}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded flex items-center gap-2"
+            className="btn-modern px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white flex items-center gap-2"
           >
             {isScanning ? (
               <>
@@ -320,46 +416,51 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
               />
             </div>
             <div>
-              <label className="text-sm text-slate-400 mb-1 block">Refresh Interval (ms)</label>
+              <label className="text-sm text-slate-400 mb-1 block">Show Unprofitable</label>
               <input
+                type="checkbox"
+                checked={config.showUnprofitable || false}
+                onChange={(e) => setConfig(prev => ({ ...prev, showUnprofitable: e.target.checked }))}
+                className="mr-2"
+              />
+            </div>
+            <div>
+              <AnimatedInput
                 type="number"
-                value={config.refreshInterval}
+                label="Refresh Interval (ms)"
+                value={config.refreshInterval.toString()}
                 onChange={(e) => setConfig(prev => ({ ...prev, refreshInterval: parseInt(e.target.value) || 10000 }))}
-                className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1"
                 min={5000}
                 max={60000}
                 step={1000}
               />
             </div>
             <div>
-              <label className="text-sm text-slate-400 mb-1 block">Min Profit (SOL)</label>
-              <input
+              <AnimatedInput
                 type="number"
-                value={config.minProfitThreshold}
+                label="Min Profit (SOL)"
+                value={config.minProfitThreshold.toString()}
                 onChange={(e) => setConfig(prev => ({ ...prev, minProfitThreshold: parseFloat(e.target.value) || 0.001 }))}
-                className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1"
                 step={0.001}
                 min={0}
               />
             </div>
             <div>
-              <label className="text-sm text-slate-400 mb-1 block">Min Profit %</label>
-              <input
+              <AnimatedInput
                 type="number"
-                value={config.minProfitPercent}
+                label="Min Profit %"
+                value={config.minProfitPercent.toString()}
                 onChange={(e) => setConfig(prev => ({ ...prev, minProfitPercent: parseFloat(e.target.value) || 0.1 }))}
-                className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1"
                 step={0.1}
                 min={0}
               />
             </div>
             <div>
-              <label className="text-sm text-slate-400 mb-1 block">Max Hops</label>
-              <input
+              <AnimatedInput
                 type="number"
-                value={config.maxHops}
+                label="Max Hops"
+                value={config.maxHops.toString()}
                 onChange={(e) => setConfig(prev => ({ ...prev, maxHops: parseInt(e.target.value) || 5 }))}
-                className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1"
                 min={2}
                 max={10}
               />
@@ -377,7 +478,7 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
       )}
 
       {/* Stats Bar */}
-      <div className="border-b border-slate-800 p-4 flex items-center gap-6">
+      <div className="relative z-10 border-b border-slate-800/50 glass p-4 flex items-center gap-6">
         <div className="flex items-center gap-2">
           <span className="text-slate-400">Pools:</span>
           <span className="font-bold">{pools.length}</span>
@@ -397,15 +498,14 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
       </div>
 
       {/* Filters */}
-      <div className="border-b border-slate-800 p-4 flex items-center gap-4">
+      <div className="relative z-10 border-b border-slate-800/50 glass p-4 flex items-center gap-4">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
+          <AnimatedInput
             type="text"
-            placeholder="Search by token or DEX..."
+            label="Search by token or DEX..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded pl-10 pr-4 py-2"
+            particles={true}
           />
         </div>
         <select
@@ -444,7 +544,7 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
       )}
 
       {/* Opportunities Table */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar">
         {filteredOpportunities.length === 0 ? (
           <div className="flex items-center justify-center h-full text-slate-400">
             {isScanning ? (
@@ -477,7 +577,7 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
                 {filteredOpportunities.map((opp) => (
                   <tr
                     key={opp.id}
-                    className="border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer"
+                    className="border-b border-slate-800/50 hover:bg-slate-800/30 cursor-pointer transition-all card-modern"
                     onClick={() => setSelectedOpportunity(opp)}
                   >
                     <td className="py-3">
@@ -563,66 +663,17 @@ export function ArbitrageScanner({ onBuildTransaction }: ArbitrageScannerProps) 
         )}
       </div>
 
-      {/* Opportunity Details Modal */}
+      {/* Opportunity Details Visualization (3D) */}
       {selectedOpportunity && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedOpportunity(null)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Arbitrage Details</h2>
-              <button onClick={() => setSelectedOpportunity(null)} className="text-slate-400 hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-slate-400">Profit</div>
-                  <div className="text-lg font-bold text-green-400">{selectedOpportunity.profit.toFixed(4)} SOL</div>
-                </div>
-                <div>
-                  <div className="text-sm text-slate-400">Profit %</div>
-                  <div className="text-lg font-bold text-teal-400">{selectedOpportunity.profitPercent.toFixed(2)}%</div>
-                </div>
-                <div>
-                  <div className="text-sm text-slate-400">Net Profit</div>
-                  <div className="text-lg font-bold">{selectedOpportunity.netProfit.toFixed(4)} SOL</div>
-                </div>
-                <div>
-                  <div className="text-sm text-slate-400">Gas Estimate</div>
-                  <div className="text-lg">{selectedOpportunity.gasEstimate} lamports</div>
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-slate-400 mb-2">Path Steps</div>
-                <div className="space-y-2">
-                  {selectedOpportunity.steps.map((step, i) => (
-                    <div key={i} className="bg-slate-800 p-3 rounded flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{step.tokenIn.symbol}</span>
-                        <ArrowRight size={14} />
-                        <span className="font-medium">{step.tokenOut.symbol}</span>
-                        <span className="text-xs text-slate-500 ml-2">via {step.dex}</span>
-                      </div>
-                      <div className="text-sm text-slate-400">
-                        Fee: {step.fee} bps
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  handleBuildTransaction(selectedOpportunity);
-                  setSelectedOpportunity(null);
-                }}
-                className="w-full py-2 bg-teal-600 hover:bg-teal-700 rounded flex items-center justify-center gap-2"
-              >
-                <Zap size={16} />
-                Build Transaction
-              </button>
-            </div>
-          </div>
-        </div>
+        <Arbitrage3DVisualization
+          opportunity={selectedOpportunity}
+          onTrainAI={() => handleTrainAI(selectedOpportunity)}
+          onExecute={() => {
+            handleExecute(selectedOpportunity);
+            // Don't close automatically, let user see result or close manually
+          }}
+          onClose={() => setSelectedOpportunity(null)}
+        />
       )}
     </div>
     </>

@@ -22,7 +22,7 @@ import {
   createTransferInstruction,
   getAccount,
 } from '@solana/spl-token';
-import { SEAL_TOKEN_ECONOMICS } from './config';
+import { SEAL_TOKEN_ECONOMICS, SEAL_TOKEN_CONFIG, getSealMintAddress } from './config';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 
 /**
@@ -33,9 +33,13 @@ export async function airdropSealToBetaTester(
   treasuryWallet: Keypair, // Treasury wallet that holds SEAL tokens
   recipientWallet: PublicKey
 ): Promise<string> {
-  const sealMint = new PublicKey(SEAL_TOKEN_ECONOMICS.mint.address);
+  const sealMintPubkey = getSealMintAddress();
+  if (!sealMintPubkey) {
+    throw new Error('SEAL token mint address not configured. Please initialize the SEAL token first.');
+  }
+  const sealMint = sealMintPubkey;
   const airdropAmount = SEAL_TOKEN_ECONOMICS.beta_tester.airdrop_amount;
-  const decimals = SEAL_TOKEN_ECONOMICS.mint.decimals;
+  const decimals = SEAL_TOKEN_CONFIG.decimals;
   
   // Calculate amount in smallest unit
   const amount = BigInt(airdropAmount) * BigInt(10 ** decimals);

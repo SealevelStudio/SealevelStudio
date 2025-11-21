@@ -5,22 +5,31 @@ import { FeatureType, UsageRecord, UsageStats, FreeTrialStatus } from './types';
 import { SEAL_TOKEN_ECONOMICS } from '../seal-token/config';
 
 // In-memory storage (in production, use database)
-const usageRecords: Map<string, UsageRecord[]> = new Map();
-const freeTrials: Map<string, FreeTrialStatus> = new Map();
+// Exported for admin analytics access
+export const usageRecords: Map<string, UsageRecord[]> = new Map();
+export const freeTrials: Map<string, FreeTrialStatus> = new Map();
 
 // Free trial configuration
 const FREE_TRIAL_DAYS = 7; // 7-day free trial
-const FREE_TRIAL_FEATURES = {
+const FREE_TRIAL_FEATURES: Record<FeatureType, number> = {
   scanner_scan: 50, // 50 free scans
   scanner_auto_refresh: 10, // 10 hours of auto-refresh
   simulation: 30, // 30 free simulations
   ai_query: 100, // 100 free AI queries
   code_export: 20, // 20 free exports
   advanced_transaction: 50, // 50 free advanced transactions
-  // Premium services are NOT included in free trial
-  // bundler_multi_send: 0,
-  // market_maker_setup: 0,
-  // etc.
+  // Premium services are NOT included in free trial (0 = not available)
+  bundler_multi_send: 0,
+  bundler_recipient: 0,
+  market_maker_setup: 0,
+  market_maker_monthly: 0,
+  market_maker_trade: 0,
+  telegram_bot_setup: 0,
+  telegram_bot_monthly: 0,
+  telegram_bot_post: 0,
+  twitter_bot_setup: 0,
+  twitter_bot_monthly: 0,
+  twitter_bot_tweet: 0,
 };
 
 /**
@@ -76,6 +85,18 @@ export function getOrCreateFreeTrial(userId: string): FreeTrialStatus {
       ai_query: 0,
       code_export: 0,
       advanced_transaction: 0,
+      // Premium services (not in free trial, but must be initialized)
+      bundler_multi_send: 0,
+      bundler_recipient: 0,
+      market_maker_setup: 0,
+      market_maker_monthly: 0,
+      market_maker_trade: 0,
+      telegram_bot_setup: 0,
+      telegram_bot_monthly: 0,
+      telegram_bot_post: 0,
+      twitter_bot_setup: 0,
+      twitter_bot_monthly: 0,
+      twitter_bot_tweet: 0,
     },
     totalUsage: 0,
   };
@@ -119,6 +140,14 @@ export function canUseFeature(userId: string, feature: FeatureType): { allowed: 
   const used = trial.featuresUsed[feature];
   const limit = FREE_TRIAL_FEATURES[feature];
   
+  // Premium services (limit = 0) are not included in free trial
+  if (limit === 0) {
+    return { 
+      allowed: false, 
+      reason: `${feature} is a premium service and not included in the free trial` 
+    };
+  }
+  
   if (limit === -1) {
     return { allowed: true }; // Unlimited
   }
@@ -135,6 +164,7 @@ export function canUseFeature(userId: string, feature: FeatureType): { allowed: 
 
 /**
  * Track feature usage
+ * IMPORTANT: This function checks limits BEFORE tracking to prevent exceeding limits
  */
 export function trackUsage(
   userId: string,
@@ -173,11 +203,20 @@ export function trackUsage(
     );
   }
   
-  // Check if usage is allowed (for non-premium features)
-  if (!isPremiumService) {
+  // Check if usage is allowed BEFORE tracking (for non-premium features)
+  if (!isPremiumService && isTrialActive) {
     const canUse = canUseFeature(userId, feature);
-    if (!canUse.allowed && isTrialActive) {
+    if (!canUse.allowed) {
       throw new Error(canUse.reason || 'Feature usage not allowed');
+    }
+    
+    // Double-check: Verify we haven't exceeded the limit
+    const used = trial.featuresUsed[feature] || 0;
+    const limit = FREE_TRIAL_FEATURES[feature];
+    if (limit > 0 && used >= limit) {
+      throw new Error(
+        `Free trial limit reached for ${feature}. Used: ${used}/${limit}`
+      );
     }
   }
   
@@ -198,8 +237,12 @@ export function trackUsage(
   }
   usageRecords.get(userId)!.push(record);
   
-  // Update free trial usage
+  // Update free trial usage AFTER successful tracking
   if (isTrialActive) {
+    // Ensure feature counter exists
+    if (trial.featuresUsed[feature] === undefined) {
+      trial.featuresUsed[feature] = 0;
+    }
     trial.featuresUsed[feature]++;
     trial.totalUsage++;
     freeTrials.set(userId, trial);
@@ -247,13 +290,25 @@ export function getUsageStats(
   );
   
   // Count features
-  const features = {
+  const features: UsageStats['features'] = {
     scanner_scan: 0,
     scanner_auto_refresh: 0,
     simulation: 0,
     ai_query: 0,
     code_export: 0,
     advanced_transaction: 0,
+    // Premium services
+    bundler_multi_send: 0,
+    bundler_recipient: 0,
+    market_maker_setup: 0,
+    market_maker_monthly: 0,
+    market_maker_trade: 0,
+    telegram_bot_setup: 0,
+    telegram_bot_monthly: 0,
+    telegram_bot_post: 0,
+    twitter_bot_setup: 0,
+    twitter_bot_monthly: 0,
+    twitter_bot_tweet: 0,
   };
   
   let totalCost = 0;

@@ -10,16 +10,28 @@ import { AdvertisingConfig, AdvertisingMessage, AdvertisingStats } from './types
 
 export class TelegramAdvertisingBot {
   private config: AdvertisingConfig['telegram'];
+  private tokenInfo: {
+    tokenName: string;
+    tokenSymbol: string;
+    tokenAddress: string;
+    tokenDescription?: string;
+  };
   private stats: AdvertisingStats;
   private postingInterval?: NodeJS.Timeout;
   private isRunning: boolean = false;
 
-  constructor(config: AdvertisingConfig['telegram']) {
+  constructor(config: AdvertisingConfig['telegram'], tokenInfo: {
+    tokenName: string;
+    tokenSymbol: string;
+    tokenAddress: string;
+    tokenDescription?: string;
+  }) {
     if (!config?.botToken) {
       throw new Error('Telegram bot token required');
     }
     
     this.config = config;
+    this.tokenInfo = tokenInfo;
     this.stats = {
       totalPosts: 0,
       telegramPosts: 0,
@@ -124,9 +136,9 @@ export class TelegramAdvertisingBot {
   private generateMessage(): string {
     const template = this.config?.messageTemplate || 
       `🚀 *New Token Launch!*\n\n` +
-      `*Token:* ${this.config?.tokenName || 'Unknown'}\n` +
-      `*Symbol:* ${this.config?.tokenSymbol || 'UNKNOWN'}\n` +
-      `*Address:* \`${this.config?.tokenAddress || 'N/A'}\`\n\n` +
+      `*Token:* ${this.tokenInfo.tokenName || 'Unknown'}\n` +
+      `*Symbol:* ${this.tokenInfo.tokenSymbol || 'UNKNOWN'}\n` +
+      `*Address:* \`${this.tokenInfo.tokenAddress || 'N/A'}\`\n\n` +
       `Get in early! 🎯\n\n` +
       `#Solana #DeFi #Crypto`;
     

@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Layers, TrendingUp, MessageSquare, Wallet, Zap, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { Layers, TrendingUp, MessageSquare, Wallet, Zap, ArrowRight, ArrowLeft, Clock, Sparkles } from 'lucide-react';
 
 interface ServiceCardProps {
   title: string;
@@ -11,9 +10,32 @@ interface ServiceCardProps {
   cost: string;
   link: string;
   features: string[];
+  available?: boolean;
 }
 
-function ServiceCard({ title, description, icon, cost, link, features }: ServiceCardProps) {
+interface ServiceCardProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  cost: string;
+  link: string;
+  features: string[];
+  available?: boolean;
+  onNavigate?: () => void;
+}
+
+function ServiceCard({ title, description, icon, cost, link, features, available = false, onNavigate }: ServiceCardProps) {
+  const handleClick = () => {
+    if (available && onNavigate) {
+      onNavigate();
+    } else if (available) {
+      // TODO: Navigate to service page when implemented
+      console.log(`Navigate to ${link}`);
+    } else {
+      alert(`${title} is coming soon! This feature will be available in a future update.`);
+    }
+  };
+
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-purple-500 transition-all hover:shadow-lg hover:shadow-purple-500/20">
       <div className="flex items-start justify-between mb-4">
@@ -26,6 +48,11 @@ function ServiceCard({ title, description, icon, cost, link, features }: Service
             <p className="text-gray-400 text-sm">{description}</p>
           </div>
         </div>
+        {!available && (
+          <span className="text-xs bg-yellow-900/50 text-yellow-400 px-2 py-1 rounded">
+            Coming Soon
+          </span>
+        )}
       </div>
       
       <div className="mb-4">
@@ -40,25 +67,62 @@ function ServiceCard({ title, description, icon, cost, link, features }: Service
         </ul>
       </div>
 
-      <Link
-        href={link}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+      <button
+        onClick={handleClick}
+        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          available
+            ? 'bg-purple-600 hover:bg-purple-700'
+            : 'bg-gray-700 hover:bg-gray-600 cursor-not-allowed opacity-75'
+        }`}
+        disabled={!available}
       >
-        Get Started
-        <ArrowRight size={16} />
-      </Link>
+        {available ? (
+          <>
+            Get Started
+            <ArrowRight size={16} />
+          </>
+        ) : (
+          <>
+            <Clock size={16} />
+            Coming Soon
+          </>
+        )}
+      </button>
     </div>
   );
 }
 
-export function PremiumServices() {
+interface PremiumServicesProps {
+  onBack?: () => void;
+  onNavigateToWalletManager?: () => void;
+  onNavigateToServiceBot?: () => void;
+  onNavigateToBundler?: () => void;
+  onNavigateToAdvertising?: () => void;
+}
+
+export function PremiumServices({ onBack, onNavigateToWalletManager, onNavigateToBundler, onNavigateToAdvertising, onNavigateToServiceBot }: PremiumServicesProps) {
   const services = [
+    {
+      title: 'AI Service Bot',
+      description: 'Intelligent AI assistant powered by OpenAI for Solana development help',
+      icon: <Sparkles size={24} />,
+      cost: 'Free',
+      link: '/premium/service-bot',
+      available: true, // Available
+      features: [
+        'Solana development questions',
+        'Code explanations & debugging',
+        'Platform feature guidance',
+        'Security best practices',
+      ],
+    },
     {
       title: 'Transaction Bundler',
       description: 'Multi-send SOL to up to 50 wallets, creating accounts automatically',
       icon: <Layers size={24} />,
       cost: '500 SEAL',
       link: '/premium/bundler',
+      available: true, // Available
       features: [
         'Send to up to 50 wallets',
         'Auto-create new accounts',
@@ -72,6 +136,7 @@ export function PremiumServices() {
       icon: <TrendingUp size={24} />,
       cost: '2,000 SEAL setup',
       link: '/premium/market-maker',
+      available: false, // Coming soon
       features: [
         'Grid trading strategies',
         'TWAP execution',
@@ -85,6 +150,7 @@ export function PremiumServices() {
       icon: <MessageSquare size={24} />,
       cost: '1,000-1,500 SEAL',
       link: '/premium/advertising',
+      available: true, // Available
       features: [
         'Telegram channel posting',
         'Twitter/X automation',
@@ -98,6 +164,7 @@ export function PremiumServices() {
       icon: <Wallet size={24} />,
       cost: 'Free',
       link: '/premium/wallets',
+      available: true, // Available - can navigate to wallet manager
       features: [
         'View all created wallets',
         'Import/export wallets',
@@ -110,14 +177,36 @@ export function PremiumServices() {
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
       <div className="border-b border-gray-700 p-6">
-        <h1 className="text-3xl font-bold mb-2">Premium Services</h1>
+        <div className="flex items-center gap-4 mb-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft size={18} />
+              <span className="text-sm">Back</span>
+            </button>
+          )}
+          <h1 className="text-3xl font-bold">Premium Services</h1>
+        </div>
         <p className="text-gray-400">Unlock powerful tools for advanced Solana operations</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
           {services.map((service) => (
-            <ServiceCard key={service.title} {...service} />
+            <ServiceCard 
+              key={service.title} 
+              {...service}
+              onNavigate={
+                service.title === 'AI Service Bot' ? onNavigateToServiceBot :
+                service.title === 'Wallet Manager' ? onNavigateToWalletManager :
+                service.title === 'Transaction Bundler' ? onNavigateToBundler :
+                service.title === 'Advertising Bots' ? onNavigateToAdvertising :
+                undefined
+              }
+            />
           ))}
         </div>
       </div>

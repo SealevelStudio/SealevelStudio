@@ -69,12 +69,7 @@ export interface MarketMakerState {
     timestamp: Date;
     signature: string;
   };
-  analytics?: {
-    priceHistory: Array<{ price: number; timestamp: Date }>;
-    volume24h: number;
-    volatility: number;
-    trend: 'up' | 'down' | 'sideways';
-  };
+  analytics?: MarketMakerAnalytics;
 }
 
 export interface MarketMakerTrade {

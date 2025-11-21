@@ -33,7 +33,7 @@ export function ArbitragePanel({ onSelectOpportunity, onClose }: ArbitragePanelP
 
       if (state.pools.length > 0) {
         const detector = new ArbitrageDetector(state.pools, config, connection);
-        const detected = detector.detectOpportunities();
+        const detected = await detector.detectOpportunities();
         // Show top 5 opportunities
         setOpportunities(detected.slice(0, 5));
       }
@@ -77,7 +77,7 @@ export function ArbitragePanel({ onSelectOpportunity, onClose }: ArbitragePanelP
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
         {opportunities.length === 0 ? (
           <div className="text-center text-slate-400 py-8">
             {isScanning ? (

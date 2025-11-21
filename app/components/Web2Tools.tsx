@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BarChart3, Key, Webhook, Download, Plug, Share2, Users } from 'lucide-react';
+import { BarChart3, Key, Webhook, Download, Plug, Share2, Users, ArrowLeft } from 'lucide-react';
 
 interface ToolCardProps {
   title: string;
@@ -9,9 +9,19 @@ interface ToolCardProps {
   icon: React.ReactNode;
   link: string;
   status?: 'coming-soon' | 'available';
+  onNavigate?: () => void;
 }
 
-function ToolCard({ title, description, icon, link, status = 'available' }: ToolCardProps) {
+function ToolCard({ title, description, icon, link, status = 'available', onNavigate }: ToolCardProps) {
+  const handleClick = () => {
+    if (status === 'available' && onNavigate) {
+      onNavigate();
+    } else if (status === 'available') {
+      // TODO: Navigate to tool page when implemented
+      alert(`${title} is coming soon! This feature will be available in a future update.`);
+    }
+  };
+
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-blue-500 transition-all">
       <div className="flex items-start gap-4">
@@ -29,13 +39,13 @@ function ToolCard({ title, description, icon, link, status = 'available' }: Tool
           </div>
           <p className="text-gray-400 text-sm mb-4">{description}</p>
           {status === 'available' && (
-            <a
-              href={link}
-              className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
+            <button
+              onClick={handleClick}
+              className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm transition-colors"
             >
               Open
               <span>→</span>
-            </a>
+            </button>
           )}
         </div>
       </div>
@@ -43,35 +53,40 @@ function ToolCard({ title, description, icon, link, status = 'available' }: Tool
   );
 }
 
-export function Web2Tools() {
+interface Web2ToolsProps {
+  onBack?: () => void;
+  onNavigateToSocial?: () => void;
+}
+
+export function Web2Tools({ onBack, onNavigateToSocial }: Web2ToolsProps) {
   const tools = [
     {
       title: 'Analytics Dashboard',
       description: 'Track usage statistics, transaction history, SEAL token spending, and performance metrics',
       icon: <BarChart3 size={24} />,
       link: '/web2/analytics',
-      status: 'available' as const,
+      status: 'coming-soon' as const,
     },
     {
       title: 'API Management',
       description: 'Generate API keys, configure rate limiting, track usage, and set up webhooks',
       icon: <Key size={24} />,
       link: '/web2/api-keys',
-      status: 'available' as const,
+      status: 'coming-soon' as const,
     },
     {
       title: 'Webhooks',
       description: 'Transaction notifications, balance alerts, event subscriptions, and custom webhook URLs',
       icon: <Webhook size={24} />,
       link: '/web2/webhooks',
-      status: 'available' as const,
+      status: 'coming-soon' as const,
     },
     {
       title: 'Data Export',
       description: 'Export transactions to CSV/JSON, export wallet data, usage statistics, and scheduled exports',
       icon: <Download size={24} />,
       link: '/web2/export',
-      status: 'available' as const,
+      status: 'coming-soon' as const,
     },
     {
       title: 'Integrations',
@@ -85,21 +100,37 @@ export function Web2Tools() {
       description: 'Share transactions, public profiles, transaction templates marketplace, and community features',
       icon: <Share2 size={24} />,
       link: '/web2/social',
-      status: 'coming-soon' as const,
+      status: 'available' as const,
     },
   ];
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
       <div className="border-b border-gray-700 p-6">
-        <h1 className="text-3xl font-bold mb-2">Web2 Tools</h1>
+        <div className="flex items-center gap-4 mb-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft size={18} />
+              <span className="text-sm">Back</span>
+            </button>
+          )}
+          <h1 className="text-3xl font-bold">Web2 Tools</h1>
+        </div>
         <p className="text-gray-400">Traditional web services and integrations for enhanced functionality</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
           {tools.map((tool) => (
-            <ToolCard key={tool.title} {...tool} />
+            <ToolCard 
+              key={tool.title} 
+              {...tool}
+              onNavigate={tool.title === 'Social Features' ? onNavigateToSocial : undefined}
+            />
           ))}
         </div>
       </div>

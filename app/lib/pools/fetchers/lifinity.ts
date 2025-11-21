@@ -3,6 +3,7 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { BasePoolFetcher } from './base';
 import { PoolData, FetcherResult, DEXProtocol } from '../types';
+import { fetchAllProgramAccountsV2 } from './pagination';
 
 // Lifinity program ID
 const LIFINITY_PROGRAM_ID = 'EewxydAPCCVuNEyrVN68PuSYdQ7wKn27V9Gjeoi8dy3S';
@@ -15,23 +16,77 @@ export class LifinityFetcher extends BasePoolFetcher {
     const errors: string[] = [];
 
     try {
-      const programId = new PublicKey(LIFINITY_PROGRAM_ID);
+      const programId = LIFINITY_PROGRAM_ID;
       
-      // Get Lifinity pool accounts
-      const accounts = await connection.getProgramAccounts(programId, {
-        filters: [
-          {
-            dataSize: 512, // Lifinity pool account size (approximate)
+      // Use Helius RPC if available, otherwise fall back to standard RPC
+      const rpcUrl = this.getRpcUrl(connection);
+      const useHelius = rpcUrl.includes('helius') || !!process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+      
+      let accounts;
+      
+      if (useHelius) {
+        // Use Helius API with getProgramAccountsV2 pagination
+        // Don't add API key again if URL already has it
+        let heliusRpcUrl = rpcUrl;
+        
+        // Only add API key if URL doesn't already have one
+        if (!heliusRpcUrl.includes('api-key') && process.env.NEXT_PUBLIC_HELIUS_API_KEY) {
+          // Extract just the API key if env var is accidentally set to full URL
+          let apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+          if (apiKey.includes('helius-rpc.com')) {
+            const match = apiKey.match(/[?&]api-key=([^&]+)/);
+            apiKey = match ? match[1] : apiKey.split('api-key=')[1]?.split('&')[0] || apiKey;
+          }
+          
+          const separator = heliusRpcUrl.includes('?') ? '&' : '?';
+          heliusRpcUrl = `${heliusRpcUrl}${separator}api-key=${apiKey}`;
+        }
+        
+        try {
+          accounts = await fetchAllProgramAccountsV2(
+            heliusRpcUrl,
+            programId,
+            {
+              limit: 1000,
+              encoding: 'jsonParsed',
+              filters: [{ dataSize: 512 }],
+              dataSlice: { offset: 0, length: 512 },
+            }
+          );
+        } catch (error: any) {
+          // If Helius method fails (403, rate limit, etc.), fallback to standard method
+          const errorMsg = error?.message || String(error);
+          if (errorMsg.includes('403') || errorMsg.includes('Forbidden') || errorMsg.includes('401')) {
+            console.warn(`[${this.dex}] Helius getProgramAccountsV2 failed (${errorMsg}), falling back to standard method`);
+            // Fall through to standard method below
+          } else {
+            throw error; // Re-throw if it's a different error
+          }
+        }
+      }
+      
+      // Fallback to standard getProgramAccounts if Helius failed or not using Helius
+      if (!accounts) {
+        const programPubkey = new PublicKey(programId);
+        const standardAccounts = await connection.getProgramAccounts(programPubkey, {
+          filters: [{ dataSize: 512 }],
+          dataSlice: { offset: 0, length: 512 },
+        });
+        
+        accounts = standardAccounts.map(acc => ({
+          pubkey: acc.pubkey.toString(),
+          account: {
+            data: acc.account.data,
+            executable: acc.account.executable,
+            owner: acc.account.owner.toString(),
+            lamports: acc.account.lamports,
+            rentEpoch: acc.account.rentEpoch,
           },
-        ],
-        dataSlice: {
-          offset: 0,
-          length: 512,
-        },
-      });
+        }));
+      }
 
-      // Process accounts (limited to first 50 for performance)
-      const accountsToProcess = accounts.slice(0, 50);
+      // Process all accounts
+      const accountsToProcess = accounts;
       
       for (const account of accountsToProcess) {
         try {

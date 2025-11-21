@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getMint } from '@solana/spl-token';
-import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck, Lock, Shield, Bot, Book, BarChart3, Brain, DollarSign, Coins, Droplet, Twitter, LineChart, MessageCircle, Layers, ArrowLeft } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WalletButton from './components/WalletButton';
 import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilder';
@@ -11,13 +11,40 @@ import { TransactionPreview } from './components/TransactionPreview';
 import { ClientOnly } from './components/ClientOnly';
 import { ArbitrageScanner } from './components/ArbitrageScanner';
 import { FreeTrialBanner } from './components/FreeTrialBanner';
-import { AccountSecurityAgent } from './components/AccountSecurityAgent';
-import { GlobalScannerAgent } from './components/GlobalScannerAgent';
+import { UnifiedAIAgents } from './components/UnifiedAIAgents';
 import { useNetwork } from './contexts/NetworkContext';
 import { useTutorial } from './contexts/TutorialContext';
 import { TutorialFlow } from './components/TutorialFlow';
 import { VeriSolAttestation } from './components/VeriSolAttestation';
-import { LandingPage } from './components/LandingPage';
+import { LandingPage, BlockchainType } from './components/LandingPage';
+import { PremiumServices } from './components/PremiumServices';
+import { Web2Tools } from './components/Web2Tools';
+import { WalletManager } from './components/WalletManager';
+import { AdvancedRAndDConsole } from './components/AdvancedR&DConsole';
+import { CybersecurityFinder } from './components/CybersecurityFinder';
+import { SecurityAI } from './components/SecurityAI';
+import { CybersecurityDashboard } from './components/CybersecurityDashboard';
+import { DocsView } from './components/DocsView';
+import { TransactionBundler } from './components/TransactionBundler';
+import { AdvertisingBots } from './components/AdvertisingBots';
+import { SocialFeatures } from './components/SocialFeatures';
+import { ServiceBot } from './components/ServiceBot';
+import { FeatureHighlightLoader } from './components/FeatureHighlightLoader';
+import { AdminAnalytics } from './components/AdminAnalytics';
+import { SealPresale } from './components/SealPresale';
+import { AICyberPlayground } from './components/AICyberPlayground';
+import { RevenueLanding } from './components/RevenueLanding';
+import { RentReclaimer } from './components/RentReclaimer';
+import { DevnetFaucet } from './components/DevnetFaucet';
+import { ToolsHub } from './components/ToolsHub';
+import { TwitterBot } from './components/TwitterBot';
+import { SubstackBot } from './components/SubstackBot';
+import { TelegramBot } from './components/TelegramBot';
+import { ChartsView } from './components/ChartsView';
+import { DisclaimerAgreement } from './components/DisclaimerAgreement';
+import { DeveloperCommunity } from './components/DeveloperCommunity';
+import { ComingSoonBanner } from './components/ui/ComingSoonBanner';
+import { SEAL_TOKEN_ECONOMICS } from './lib/seal-token/config';
 
 // Suppress hydration warnings during development
 if (typeof window !== 'undefined') {
@@ -351,8 +378,29 @@ function AccountInspectorView({ connection, network, publicKey }: { connection: 
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-white mb-4">Account Inspector</h1>
+    <div className="relative">
+      {/* Background Logo */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{ zIndex: 0 }}
+      >
+        <img
+          src="/sea-level-logo.png"
+          alt="Sealevel Studio Background"
+          className="absolute inset-0 w-full h-full object-contain opacity-[0.05] filter hue-rotate-[90deg] saturate-75 brightness-110"
+          style={{
+            objectPosition: 'center right',
+            transform: 'scale(0.6) rotate(-5deg)',
+          }}
+          onError={(e) => {
+            console.warn('Background logo not found');
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      </div>
+
+      <div style={{ zIndex: 1, position: 'relative' }}>
+        <h1 className="text-2xl font-bold text-white mb-4">Account Inspector</h1>
       
       {/* Network Mismatch Warning */}
       {networkMismatch && 
@@ -603,6 +651,7 @@ function AccountInspectorView({ connection, network, publicKey }: { connection: 
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -632,10 +681,20 @@ function Header({
             ← Back to Home
           </button>
         )}
-      <div className="text-xl font-bold tracking-tighter">
-        <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-500">
-          Sealevel Studio
-        </span>
+        {/* Logo */}
+        <img
+          src="/sea-level-logo.png"
+          alt="Sealevel Studio"
+          className="h-10 w-auto"
+          style={{ maxHeight: '40px' }}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+        <div className="text-xl font-bold tracking-tighter">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-500">
+            Sealevel Studio
+          </span>
         </div>
       </div>
       <div className="flex items-center space-x-4">
@@ -661,38 +720,262 @@ function Header({
 }
 
 // 2. Sidebar Component
-function Sidebar({ activeView, setActiveView }: { activeView: string; setActiveView: (view: string) => void }) {
+function Sidebar({ 
+  activeView, 
+  setActiveView,
+  onViewChange 
+}: { 
+  activeView: string; 
+  setActiveView: (view: string) => void;
+  onViewChange?: () => void;
+}) {
   const navItems = [
-    { id: 'inspector', label: 'Account Inspector', icon: <Search className="h-4 w-4" /> },
-    { id: 'builder', label: 'Transaction Builder', icon: <Wrench className="h-4 w-4" /> },
-    { id: 'scanner', label: 'Arbitrage Scanner', icon: <TrendingUp className="h-4 w-4" /> },
-    { id: 'simulation', label: 'Simulation', icon: <Play className="h-4 w-4" /> },
-    { id: 'exporter', label: 'Code Exporter', icon: <Code className="h-4 w-4" /> },
-    { id: 'attestation', label: 'VeriSol Attestation', icon: <ShieldCheck className="h-4 w-4" /> },
+    // Core Tools
+    { id: 'inspector', label: 'Account Inspector', icon: <Search className="h-4 w-4" />, section: 'core' },
+    { id: 'builder', label: 'Transaction Builder', icon: <Wrench className="h-4 w-4" />, section: 'core' },
+    { id: 'scanner', label: 'Arbitrage Scanner', icon: <TrendingUp className="h-4 w-4" />, section: 'core' },
+    { id: 'bundler', label: 'Transaction Bundler', icon: <Layers className="h-4 w-4" />, section: 'core' },
+    
+    // Revenue
+    { id: 'presale', label: 'SEAL Presale', icon: <TrendingUp className="h-4 w-4" />, section: 'revenue', badge: 'Hot' },
+    { id: 'premium', label: 'Premium Services', icon: <Zap className="h-4 w-4" />, section: 'revenue' },
+    { id: 'revenue', label: 'Pricing & Revenue', icon: <DollarSign className="h-4 w-4" />, section: 'revenue' },
+    
+    // AI
+    { id: 'cyber-playground', label: 'AI Cyber Playground', icon: <Brain className="h-4 w-4" />, section: 'ai' },
+    
+    // Tools Hub
+    { id: 'tools', label: 'Tools Hub', icon: <Code className="h-4 w-4" />, section: 'tools' },
+    { id: 'rent-reclaimer', label: 'Rent Reclaimer', icon: <Coins className="h-4 w-4" />, section: 'tools' },
+    { id: 'faucet', label: 'Devnet Faucet', icon: <Droplet className="h-4 w-4" />, section: 'tools' },
+    
+    // Legacy/Other
+    { id: 'simulation', label: 'Simulation', icon: <Play className="h-4 w-4" />, section: 'other' },
+    { id: 'exporter', label: 'Code Exporter', icon: <Code className="h-4 w-4" />, section: 'other' },
+    { id: 'attestation', label: 'VeriSol Attestation', icon: <ShieldCheck className="h-4 w-4" />, section: 'other' },
+    { id: 'web2', label: 'Web2 Tools', icon: <Terminal className="h-4 w-4" /> },
+    { id: 'twitter-bot', label: 'Twitter Bot', icon: <Twitter className="h-4 w-4" />, section: 'social' },
+    { id: 'substack-bot', label: 'Substack Bot', icon: <Book className="h-4 w-4" />, section: 'social' },
+    { id: 'telegram-bot', label: 'Telegram Bot', icon: <MessageCircle className="h-4 w-4" />, section: 'social' },
+    { id: 'charts', label: 'Charts & Visualizations', icon: <LineChart className="h-4 w-4" />, section: 'tools' },
+    { id: 'wallets', label: 'Wallet Manager', icon: <Wallet className="h-4 w-4" /> },
+    { id: 'rd-console', label: 'R&D Console', icon: <Lock className="h-4 w-4" /> },
+    { id: 'cybersecurity', label: 'Cybersecurity Dashboard', icon: <Shield className="h-4 w-4" /> },
+    { id: 'docs', label: 'Documentation', icon: <Book className="h-4 w-4" /> },
+    { id: 'admin', label: 'Admin Analytics', icon: <BarChart3 className="h-4 w-4" /> },
   ];
 
+  const coreItems = navItems.filter(item => item.section === 'core');
+  const revenueItems = navItems.filter(item => item.section === 'revenue');
+  const aiItems = navItems.filter(item => item.section === 'ai');
+  const toolsItems = navItems.filter(item => item.section === 'tools');
+  const otherItems = navItems.filter(item => !item.section || item.section === 'other');
+
   return (
-    <nav className="flex w-64 flex-col border-r border-gray-700 bg-gray-900/50 p-4 shrink-0">
-      <ul className="flex-1 space-y-2">
-        {navItems.map((item) => (
-          <li key={item.id}>
-            <button
-              onClick={() => setActiveView(item.id)}
-              className={`
-                flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
-                transition-colors
-                ${
-                  activeView === item.id
-                    ? 'bg-purple-600/20 text-purple-300'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
-                }
-              `}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
+    <nav className="flex w-64 flex-col border-r border-gray-700 bg-gray-900/50 p-4 shrink-0 custom-scrollbar overflow-y-auto">
+      <ul className="flex-1 space-y-6">
+        {/* Core Tools */}
+        {coreItems.length > 0 && (
+          <li>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-3">Core</div>
+            <ul className="space-y-1">
+              {coreItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
+                    className={`
+                      flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
+                      transition-colors
+                      ${
+                        activeView === item.id
+                          ? 'bg-purple-600/20 text-purple-300'
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                      }
+                    `}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </li>
-        ))}
+        )}
+
+        {/* Revenue */}
+        {revenueItems.length > 0 && (
+          <li>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-3">Revenue</div>
+            <ul className="space-y-1">
+              {revenueItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
+                    className={`
+                      flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
+                      transition-colors
+                      ${
+                        activeView === item.id
+                          ? 'bg-purple-600/20 text-purple-300'
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                      }
+                    `}
+                  >
+                    {item.icon}
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge && (
+                      <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        )}
+
+        {/* AI */}
+        {aiItems.length > 0 && (
+          <li>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-3">AI</div>
+            <ul className="space-y-1">
+              {aiItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
+                    className={`
+                      flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
+                      transition-colors
+                      ${
+                        activeView === item.id
+                          ? 'bg-purple-600/20 text-purple-300'
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                      }
+                    `}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        )}
+
+        {/* Tools Hub */}
+        {toolsItems.length > 0 && (
+          <li>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-3">Tools</div>
+            <ul className="space-y-1">
+              {toolsItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
+                    className={`
+                      flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
+                      transition-colors
+                      ${
+                        activeView === item.id
+                          ? 'bg-purple-600/20 text-purple-300'
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                      }
+                    `}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        )}
+
+        {/* Social */}
+        {navItems.filter(item => item.section === 'social').length > 0 && (
+          <li>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-3">Social</div>
+            <ul className="space-y-1">
+              {navItems.filter(item => item.section === 'social').map((item) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
+                    className={`
+                      flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
+                      transition-colors
+                      ${
+                        activeView === item.id
+                          ? 'bg-purple-600/20 text-purple-300'
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                      }
+                    `}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        )}
+
+        {/* Other */}
+        {otherItems.length > 0 && (
+          <li>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-3">Other</div>
+            <ul className="space-y-1">
+              {otherItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => {
+                      if (item.id !== activeView) {
+                        if (onViewChange) onViewChange();
+                      }
+                      setActiveView(item.id);
+                    }}
+                    className={`
+                      flex w-full items-center space-x-3 rounded-md px-3 py-2 text-left text-sm font-medium
+                      transition-colors
+                      ${
+                        activeView === item.id
+                          ? 'bg-purple-600/20 text-purple-300'
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                      }
+                    `}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        )}
       </ul>
       {/* Opaque Logo */}
       <div className="mt-auto pt-8 pb-4 flex justify-center">
@@ -750,7 +1033,130 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
 
   // Scanner has its own full-screen layout
   if (activeView === 'scanner') {
-    return <ArbitrageScanner onBuildTransaction={handleArbitrageBuild} />;
+    return <ArbitrageScanner onBuildTransaction={handleArbitrageBuild} onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Premium Services has its own full-screen layout
+  if (activeView === 'premium') {
+    return <PremiumServices 
+      onBack={() => setActiveView('inspector')} 
+      onNavigateToWalletManager={() => setActiveView('wallets')}
+      onNavigateToBundler={() => setActiveView('bundler')}
+      onNavigateToAdvertising={() => setActiveView('advertising')}
+      onNavigateToServiceBot={() => setActiveView('service-bot')}
+    />;
+  }
+
+  // Transaction Bundler has its own full-screen layout
+  if (activeView === 'bundler') {
+    return <TransactionBundler onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Advertising Bots has its own full-screen layout
+  if (activeView === 'advertising') {
+    return <AdvertisingBots onBack={() => setActiveView('premium')} />;
+  }
+
+  // Service Bot has its own full-screen layout
+  if (activeView === 'service-bot') {
+    return <ServiceBot onBack={() => setActiveView('premium')} />;
+  }
+
+  // Web2 Tools has its own full-screen layout
+  if (activeView === 'web2') {
+    return <Web2Tools 
+      onBack={() => setActiveView('inspector')}
+      onNavigateToSocial={() => setActiveView('social')}
+    />;
+  }
+
+  // Social Features has its own full-screen layout
+  if (activeView === 'social') {
+    return <SocialFeatures onBack={() => setActiveView('web2')} />;
+  }
+
+  // Wallet Manager has its own full-screen layout
+  if (activeView === 'wallets') {
+    return <WalletManager onBack={() => setActiveView('inspector')} />;
+  }
+
+  // R&D Console is a floating component, always available
+  // Navigation item is for reference - console can be opened from anywhere
+
+  // Cybersecurity Dashboard has its own full-screen layout
+  if (activeView === 'cybersecurity') {
+    return <CybersecurityDashboard onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Documentation has its own full-screen layout
+  if (activeView === 'docs') {
+    return <DocsView onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Admin Analytics has its own full-screen layout
+  if (activeView === 'admin') {
+    return <AdminAnalytics onBack={() => setActiveView('inspector')} />;
+  }
+
+  // SEAL Presale has its own full-screen layout
+  if (activeView === 'presale') {
+    return <SealPresale onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Revenue Landing has its own full-screen layout
+  if (activeView === 'revenue') {
+    return (
+      <RevenueLanding
+        onBack={() => setActiveView('inspector')}
+        onNavigateToPresale={() => setActiveView('presale')}
+        onNavigateToPremium={() => setActiveView('premium')}
+      />
+    );
+  }
+
+  // AI Cyber Playground has its own full-screen layout
+  if (activeView === 'cyber-playground') {
+    return <AICyberPlayground onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Rent Reclaimer has its own full-screen layout
+  if (activeView === 'rent-reclaimer') {
+    return <RentReclaimer onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Devnet Faucet has its own full-screen layout
+  if (activeView === 'faucet') {
+    return <DevnetFaucet onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Tools Hub has its own full-screen layout
+  if (activeView === 'tools') {
+    return <ToolsHub onBack={() => setActiveView('inspector')} onNavigateToTool={(toolId) => setActiveView(toolId)} />;
+  }
+
+  // Twitter Bot has its own full-screen layout
+  if (activeView === 'twitter-bot') {
+    return <TwitterBot onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Substack Bot has its own full-screen layout
+  if (activeView === 'substack-bot') {
+    return <SubstackBot onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Telegram Bot has its own full-screen layout
+  if (activeView === 'telegram-bot') {
+    return <TelegramBot onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Charts View has its own full-screen layout
+  if (activeView === 'charts') {
+    return <ChartsView onBack={() => setActiveView('inspector')} />;
+  }
+
+  // Developer Community has its own full-screen layout
+  if (activeView === 'freelance-devs') {
+    return <DeveloperCommunity onBack={() => setActiveView('inspector')} />;
   }
 
   // Default single-column layout for other views
@@ -780,40 +1186,108 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
 
 function SimulationView({ transactionDraft }: { transactionDraft: any }) {
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-white mb-4">Simulation</h1>
-      <p className="text-gray-400">
-        Feature coming soon. This is where the "before and after" state diff will be shown.
-      </p>
-      {transactionDraft && (
-        <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
-          <h3 className="text-lg font-semibold text-blue-300 mb-2">Transaction Draft</h3>
-          <pre className="bg-blue-800/50 p-3 rounded text-sm overflow-x-auto text-blue-200 font-mono">
-            {JSON.stringify(transactionDraft, null, 2)}
-          </pre>
-        </div>
-      )}
+    <div className="relative">
+      <img
+        src="/sea-level-logo.png"
+        alt="Sealevel Studio Background"
+        className="absolute inset-0 w-full h-full object-contain opacity-[0.04] pointer-events-none"
+        style={{
+          objectPosition: 'center right',
+          transform: 'scale(0.65) rotate(-4deg)',
+          zIndex: 0,
+        }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+      <div style={{ zIndex: 1, position: 'relative' }} className="space-y-6">
+        <ComingSoonBanner
+          title="State-Diff Simulator"
+          description="We are polishing the Solana state diff visualizer. Soon you will be able to compare before/after states, account deltas, and emitted logs in a single pane."
+          highlights={[
+            'Visual balance changes, rent impacts, and CPI cascades',
+            'Simulate across devnet/mainnet forks with deterministic snapshots',
+            'Share signed simulation bundles with teammates',
+          ]}
+          checklist={[
+            'Finalizing compute unit historians',
+            'Adding fault isolation for failed CUs',
+            'Hardening transaction guards & caching',
+          ]}
+          accent="blue"
+        >
+          <p className="text-sm text-gray-300">
+            While we finish the simulator, you can still capture draft instructions below and share them with QA.
+          </p>
+          {transactionDraft && (
+            <div className="mt-4 p-4 bg-blue-900/20 border border-blue-700 rounded-2xl">
+              <h3 className="text-lg font-semibold text-blue-200 mb-2">Current Transaction Draft</h3>
+              <pre className="bg-blue-950/60 p-3 rounded text-sm overflow-x-auto text-blue-100 font-mono">
+                {JSON.stringify(transactionDraft, null, 2)}
+              </pre>
+            </div>
+          )}
+        </ComingSoonBanner>
+      </div>
     </div>
   );
 }
 
 function ExporterView() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-white mb-4">Code Exporter</h1>
-      <p className="text-gray-400">
-        Feature coming soon. This is where you will get your copy-paste code snippets.
-      </p>
+    <div className="relative">
+      <img
+        src="/sea-level-logo.png"
+        alt="Sealevel Studio Background"
+        className="absolute inset-0 w-full h-full object-contain opacity-[0.04] pointer-events-none"
+        style={{
+          objectPosition: 'center right',
+          transform: 'scale(0.65) rotate(2deg)',
+          zIndex: 0,
+        }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+      <div style={{ zIndex: 1, position: 'relative' }}>
+        <ComingSoonBanner
+          title="Copy-Paste Code Exporter"
+          description="Automatic client, server, and script generation is wrapping up. You'll soon export fully typed SDK snippets for JS, Rust, Python, and Anchor without leaving the IDE."
+          highlights={[
+            'Generates Anchor, web3.js, helius, and validator-ready scripts',
+            'Context-aware comments & guardrails baked in',
+          ]}
+          checklist={[
+            'Finishing transaction recipe templating',
+            'Adding pricing transparency for bulk exports',
+          ]}
+          accent="purple"
+        />
+      </div>
     </div>
   );
+}
+
+interface LoaderContextInfo {
+  featureName: string;
+  description: string;
+  directions?: string[];
+  cost?: string;
+  disclaimer?: string;
+  extraNote?: string;
 }
 
 // Landing Page Component is now imported from ./components/LandingPage
 
 // Main App Component
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<'landing' | 'tutorial' | 'app'>('landing');
+  // ALL HOOKS MUST BE CALLED AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
+  const [currentScreen, setCurrentScreen] = useState<'landing' | 'disclaimer' | 'tutorial' | 'app'>('landing');
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [previousView, setPreviousView] = useState<string>('');
   const [activeView, setActiveView] = useState('inspector');
+  const [rdConsoleMinimized, setRdConsoleMinimized] = useState(true);
+  const [selectedBlockchain, setSelectedBlockchain] = useState<BlockchainType | null>('solana');
   const { publicKey } = useWallet();
   const { network, setNetwork } = useNetwork();
   const { shouldShowTutorial, completeTutorial } = useTutorial();
@@ -823,7 +1297,77 @@ export default function App() {
     return new Connection(NETWORKS[network].rpcUrl, 'confirmed');
   }, [network]);
 
-  const handleGetStarted = () => {
+  // Open console when nav item is clicked
+  useEffect(() => {
+    if (activeView === 'rd-console') {
+      setRdConsoleMinimized(false);
+    }
+  }, [activeView]);
+
+  // Store selected blockchain in localStorage
+  useEffect(() => {
+    if (selectedBlockchain && typeof window !== 'undefined') {
+      localStorage.setItem('sealevel-blockchain', selectedBlockchain);
+    }
+  }, [selectedBlockchain]);
+
+  // Load selected blockchain from localStorage, default to Solana
+  // Also check for disclaimer agreement on initial load
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sealevel-blockchain');
+      if (saved && ['polkadot', 'solana', 'ethereum', 'polygon', 'avalanche', 'base', 'arbitrum', 'optimism', 'sui', 'aptos'].includes(saved)) {
+        setSelectedBlockchain(saved as BlockchainType);
+      } else {
+        // Default to Solana if nothing saved
+        setSelectedBlockchain('solana');
+      }
+      
+      // Check if disclaimer needs to be shown on initial load
+      const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
+      if (!disclaimerAgreed && currentScreen === 'landing') {
+        // Set disclaimer screen if user hasn't agreed yet
+        setCurrentScreen('disclaimer');
+      }
+    }
+  }, []);
+
+  const handleGetStarted = (blockchain?: BlockchainType) => {
+    if (blockchain) {
+      setSelectedBlockchain(blockchain);
+      // Polkadot and Solana are fully supported
+      if (blockchain === 'polkadot' || blockchain === 'solana') {
+        // Continue with selected blockchain - both are functional
+      } else {
+        // Show coming soon message for other blockchains
+        alert(`${blockchain.charAt(0).toUpperCase() + blockchain.slice(1)} support is coming soon! For now, you can use Polkadot or Solana which have full feature support.`);
+        setSelectedBlockchain('solana');
+      }
+    } else {
+      // Default to Solana if no selection
+      setSelectedBlockchain('solana');
+    }
+    
+    // Check if disclaimer needs to be shown
+    if (typeof window !== 'undefined') {
+      const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
+      if (!disclaimerAgreed) {
+        setCurrentScreen('disclaimer');
+        return;
+      }
+    }
+    
+    // Proceed to tutorial or app
+    setIsPageLoading(true);
+    if (shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler')) {
+      setCurrentScreen('tutorial');
+    } else {
+      setCurrentScreen('app');
+    }
+  };
+
+  const handleDisclaimerAgree = () => {
+    setIsPageLoading(true);
     if (shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler')) {
       setCurrentScreen('tutorial');
     } else {
@@ -832,54 +1376,271 @@ export default function App() {
   };
 
   const handleBackToLanding = () => {
+    setIsPageLoading(true); // Show loading animation when going back to landing
     setCurrentScreen('landing');
   };
 
-  if (currentScreen === 'landing') {
-    return <LandingPage onGetStarted={handleGetStarted} />;
-  }
+  let content: React.ReactNode;
 
-  if (currentScreen === 'tutorial') {
-    return (
+  if (currentScreen === 'landing') {
+    content = <LandingPage onGetStarted={handleGetStarted} />;
+  } else if (currentScreen === 'disclaimer') {
+    content = (
+      <div className="min-h-screen bg-gray-900">
+        <DisclaimerAgreement onAgree={handleDisclaimerAgree} />
+      </div>
+    );
+  } else if (currentScreen === 'tutorial') {
+    content = (
       <TutorialFlow 
         onComplete={() => setCurrentScreen('app')} 
       />
     );
+  } else {
+    // Main app interface
+    const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'admin' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot' || activeView === 'presale' || activeView === 'cyber-playground' || activeView === 'tools' || activeView === 'revenue' || activeView === 'rent-reclaimer' || activeView === 'faucet' || activeView === 'twitter-bot' || activeView === 'substack-bot' || activeView === 'telegram-bot' || activeView === 'charts';
+
+    // Get loading quote based on destination view
+    const getLoadingQuote = () => {
+      switch (activeView) {
+        case 'inspector':
+          return { text: "In crypto, you're not buying a security, you're buying into a community.", author: "Naval Ravikant" };
+        case 'builder':
+          return { text: "Code is law.", author: "Ethereum Community" };
+        case 'scanner':
+          return { text: "The blockchain is an incorruptible digital ledger.", author: "Don Tapscott" };
+        case 'presale':
+          return { text: "The future of money is programmable.", author: "Vitalik Buterin" };
+        case 'cyber-playground':
+          return { text: "Web3 is about restoring power to people.", author: "Web3 Advocates" };
+        default:
+          return { text: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs" };
+      }
+    };
+
+    const getLoadingContext = (): LoaderContextInfo => {
+      const bundlerCost = `${SEAL_TOKEN_ECONOMICS.pricing.bundler_multi_send.toLocaleString()} SEAL per bundle + ${SEAL_TOKEN_ECONOMICS.pricing.bundler_recipient} SEAL per recipient`;
+      const twitterCost = `${SEAL_TOKEN_ECONOMICS.pricing.twitter_bot_setup.toLocaleString()} SEAL setup / ${SEAL_TOKEN_ECONOMICS.pricing.twitter_bot_monthly.toLocaleString()} SEAL monthly`;
+      const telegramCost = `${SEAL_TOKEN_ECONOMICS.pricing.telegram_bot_setup.toLocaleString()} SEAL setup / ${SEAL_TOKEN_ECONOMICS.pricing.telegram_bot_monthly.toLocaleString()} SEAL monthly`;
+      const builderCost = `${SEAL_TOKEN_ECONOMICS.pricing.advanced_transaction.toLocaleString()} SEAL per advanced build`;
+      const scannerCost = `${SEAL_TOKEN_ECONOMICS.pricing.scanner_scan.toLocaleString()} SEAL per scan`;
+
+      const baseContext: LoaderContextInfo = {
+        featureName: 'Sealevel Studio',
+        description: 'Spinning up your workspace with wallet, network, and AI assistants.',
+        directions: [
+          'Connect a wallet or stay in read-only mode',
+          'Select Devnet or Mainnet RPC access',
+        ],
+        cost: 'Free tier usage (limits apply)',
+        disclaimer: 'Experimental tooling. Verify all addresses before signing.',
+      };
+
+      const contextMap: Record<string, LoaderContextInfo> = {
+        inspector: {
+          featureName: 'Account Inspector',
+          description: 'Fetching account data, lamport balances, and token state.',
+          directions: [
+            'Paste or select an address',
+            'Use history panel to compare snapshots',
+          ],
+          disclaimer: 'Data is fetched directly from Solana RPC endpoints.',
+        },
+        builder: {
+          featureName: 'Instruction Builder',
+          description: 'Preparing programmable transaction templates with guardrails.',
+          directions: [
+            'Select a program + instruction',
+            'Fill required accounts & args, then export or simulate',
+          ],
+          cost: builderCost,
+          disclaimer: 'Transactions execute on-chain; double check keys before sending.',
+        },
+        scanner: {
+          featureName: 'Arbitrage Scanner',
+          description: 'Booting price oracles, MEV defenses, and liquidity watchers.',
+          directions: [
+            'Select pools or let AI suggest routes',
+            'Configure alert thresholds & auto-trading rules',
+          ],
+          cost: scannerCost,
+          disclaimer: 'Signals are informational, not trading advice.',
+        },
+        bundler: {
+          featureName: 'Transaction Bundler',
+          description: 'Loading multi-send builder with size estimator and wallet registry.',
+          directions: [
+            'Connect wallet & paste recipient list',
+            'Estimate size before broadcast',
+          ],
+          cost: bundlerCost,
+          disclaimer: 'Multi-sends are irreversible. Ensure you comply with sanctions & AML laws.',
+        },
+        'twitter-bot': {
+          featureName: 'Twitter Automation Bot',
+          description: 'Linking OAuth session, scheduling queue, and AI agent policies.',
+          directions: [
+            'Authenticate with Twitter and scope permissions',
+            'Draft content or configure autonomous agent cadence',
+          ],
+          cost: twitterCost,
+          disclaimer: 'Respect platform policies and local communications law; logs are locally stored.',
+        },
+        'telegram-bot': {
+          featureName: 'Telegram Command Center',
+          description: 'Bootstrapping bot token storage and responder flows.',
+          directions: [
+            'Provide BotFather token securely',
+            'Map commands to playbooks before activating',
+          ],
+          cost: telegramCost,
+          disclaimer: 'Never spam or violate telecom regulations. You are responsible for distribution.',
+        },
+        'service-bot': {
+          featureName: 'AI Service Desk',
+          description: 'Preparing customer support macros and compliance guardrails.',
+          directions: [
+            'Select tone + escalation rules',
+            'Feed FAQs or knowledge base links',
+          ],
+          cost: 'Usage billed per resolved session (quote on request)',
+          disclaimer: 'Ensure responses respect privacy laws (GDPR/CCPA etc.).',
+        },
+        'substack-bot': {
+          featureName: 'Substack Growth Bot',
+          description: 'Linking newsletter API tokens and drafting drip sequences.',
+          directions: [
+            'Connect Substack API key',
+            'Review queue before enabling auto-post',
+          ],
+          cost: 'Included in bot beta; SEAL usage billed later',
+          disclaimer: 'Content must obey jurisdictional advertising law.',
+        },
+        presale: {
+          featureName: 'Presale Portal',
+          description: 'Validating wallet allowlist and vesting schedule preview.',
+          directions: [
+            'Connect wallet and pass KYC/region gates',
+            'Select tranche and confirm token lockups',
+          ],
+          cost: 'Presale allocations vary per tranche',
+          disclaimer: 'Not an offer to sell securities. Always comply with your local regulations.',
+          extraNote: 'Countdown widget stays visible globally so you never miss go-live.',
+        },
+        docs: {
+          featureName: 'Docs & Change Logs',
+          description: 'Fetching latest on-chain references and integration guides.',
+          directions: [
+            'Use search to filter by stack',
+            'Bookmark frequently used runbooks',
+          ],
+          cost: 'Free access',
+          disclaimer: 'Documentation may describe beta features subject to change.',
+        },
+        web2: {
+          featureName: 'Web2 Integrations',
+          description: 'Loading CRM, analytics, and webhook blueprints.',
+          directions: [
+            'Store secrets in your self-hosted vault',
+            'Review rate limits before syncing',
+          ],
+          cost: 'Usage billed per connector (coming soon)',
+          disclaimer: 'Never paste production API keys into shared demos.',
+        },
+      };
+
+      return contextMap[activeView] ?? baseContext;
+    };
+
+    // Map activeView to feature ID for loading screen
+    const getCurrentFeatureId = (view: string): string => {
+      switch (view) {
+        case 'builder':
+          return 'transaction-builder';
+        case 'ai-agents':
+          return 'ai-agents';
+        case 'charts':
+          return 'market-analytics';
+        case 'cybersecurity':
+        case 'cyber-playground':
+          return 'security-tools';
+        case 'twitter-bot':
+        case 'telegram-bot':
+        case 'substack-bot':
+        case 'social':
+          return 'social-features';
+        case 'inspector':
+        default:
+          return 'transaction-builder'; // Default to transaction builder
+      }
+    };
+
+    content = (
+      <ClientOnly>
+        {/* Feature Highlight Loader Overlay */}
+        <FeatureHighlightLoader
+          isLoading={isPageLoading}
+          duration={4000}
+          onAnimationComplete={() => setIsPageLoading(false)}
+          currentFeature={getCurrentFeatureId(activeView)}
+          onFeatureClick={(featureId) => {
+            if (featureId === 'transaction-builder') {
+              setActiveView('builder');
+            } else if (featureId === 'ai-agents') {
+              setActiveView('ai-agents');
+            } else if (featureId === 'decentralized-exchange') {
+              setActiveView('charts'); // DEX features in charts view
+            } else if (featureId === 'security-tools') {
+              setActiveView('cybersecurity');
+            } else if (featureId === 'market-analytics') {
+              setActiveView('charts');
+            } else if (featureId === 'social-features') {
+              setActiveView('twitter-bot'); // Start with Twitter bot
+            }
+          }}
+          onEnterApp={() => {
+            // Stay on current view when entering
+            setIsPageLoading(false);
+          }}
+        />
+        
+        <div className="h-screen flex flex-col bg-gray-900">
+          {!isFullScreenView && (
+            <Header 
+              network={network} 
+              setNetwork={setNetwork} 
+              networks={NETWORKS} 
+              wallet={<WalletButton />}
+              onBackToLanding={handleBackToLanding}
+            />
+          )}
+          
+          <div className="flex-1 flex overflow-hidden">
+            {!isFullScreenView && (
+              <Sidebar 
+                activeView={activeView} 
+                setActiveView={setActiveView}
+                onViewChange={() => setIsPageLoading(true)}
+              />
+            )}
+            <MainContent 
+              activeView={activeView}
+              setActiveView={setActiveView}
+              connection={connection} 
+              network={network} 
+              publicKey={publicKey} 
+            />
+          </div>
+        </div>
+        
+        {/* R&D Console - Floating (always available) */}
+        <AdvancedRAndDConsole 
+          initialMinimized={rdConsoleMinimized}
+          onToggle={setRdConsoleMinimized}
+        />
+      </ClientOnly>
+    );
   }
 
-  // Main app interface
-  const isFullScreenView = activeView === 'builder' || activeView === 'scanner';
-  
-  return (
-    <ClientOnly>
-      <div className="h-screen flex flex-col bg-gray-900">
-        {!isFullScreenView && (
-          <Header 
-            network={network} 
-            setNetwork={setNetwork} 
-            networks={NETWORKS} 
-            wallet={<WalletButton />}
-            onBackToLanding={handleBackToLanding}
-          />
-        )}
-        
-        <div className="flex-1 flex overflow-hidden">
-          {!isFullScreenView && (
-            <Sidebar activeView={activeView} setActiveView={setActiveView} />
-          )}
-          <MainContent 
-            activeView={activeView}
-            setActiveView={setActiveView}
-            connection={connection} 
-            network={network} 
-            publicKey={publicKey} 
-          />
-        </div>
-      </div>
-      
-      {/* AI Agents */}
-      <AccountSecurityAgent />
-      <GlobalScannerAgent />
-    </ClientOnly>
-  );
+  return content;
 }
