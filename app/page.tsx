@@ -733,7 +733,6 @@ function Sidebar({
   const navItems = [
     // Core Tools
     { id: 'inspector', label: 'Account Inspector', icon: <Search className="h-4 w-4" />, section: 'core' },
-    { id: 'launchpad', label: 'Rugless Launchpad', icon: <Rocket className="h-4 w-4" />, section: 'core', badge: 'New' },
     { id: 'builder', label: 'Transaction Builder', icon: <Wrench className="h-4 w-4" />, section: 'core' },
     { id: 'scanner', label: 'Arbitrage Scanner', icon: <TrendingUp className="h-4 w-4" />, section: 'core' },
     { id: 'bundler', label: 'Transaction Bundler', icon: <Layers className="h-4 w-4" />, section: 'core' },
