@@ -17,9 +17,11 @@ export async function POST(request: NextRequest) {
 
     const token = botToken || process.env.TELEGRAM_BOT_TOKEN;
 
-    if (!token) {
+    // Validate Telegram bot token format: NNNNNNN:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    const telegramBotTokenPattern = /^\d{6,}:[\w-]{35,}$/;
+    if (!token || !telegramBotTokenPattern.test(token)) {
       return NextResponse.json(
-        { error: 'Telegram bot token is required', success: false },
+        { error: 'Invalid Telegram bot token format. Please provide a valid token.', success: false },
         { status: 400 }
       );
     }
