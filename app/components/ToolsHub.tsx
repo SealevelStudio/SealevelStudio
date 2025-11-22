@@ -182,8 +182,8 @@ export function ToolsHub({ onBack, onNavigateToTool }: ToolsHubProps) {
               </button>
             )}
             <div>
-              <h1 className="text-3xl font-bold text-gradient-primary">Tools Hub</h1>
-              <p className="text-sm text-gray-400 mt-1">All utility tools in one place</p>
+              <h1 className="text-3xl font-bold text-gradient-primary">Developer Dashboard</h1>
+              <p className="text-sm text-gray-400 mt-1">All utility tools and launchpads in one place</p>
             </div>
           </div>
         </div>

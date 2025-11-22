@@ -746,7 +746,7 @@ function Sidebar({
     { id: 'cyber-playground', label: 'AI Cyber Playground', icon: <Brain className="h-4 w-4" />, section: 'ai' },
     
     // Tools Hub
-    { id: 'tools', label: 'Tools Hub', icon: <Code className="h-4 w-4" />, section: 'tools' },
+    { id: 'tools', label: 'Developer Dashboard', icon: <Code className="h-4 w-4" />, section: 'tools' },
     { id: 'rent-reclaimer', label: 'Rent Reclaimer', icon: <Coins className="h-4 w-4" />, section: 'tools' },
     { id: 'faucet', label: 'Devnet Faucet', icon: <Droplet className="h-4 w-4" />, section: 'tools' },
     
