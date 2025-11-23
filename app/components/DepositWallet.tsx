@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Check, QrCode, RefreshCw, ExternalLink } from 'lucide-react';
+import { Copy, Check, QrCode, RefreshCw, ExternalLink, Coins, DollarSign, Sparkles } from 'lucide-react';
 import { useNetwork } from '../contexts/NetworkContext';
 
 interface DepositWalletProps {
@@ -8,9 +8,12 @@ interface DepositWalletProps {
   onRefresh?: () => void;
 }
 
+type FundingOption = 'SOL' | 'USDC' | 'SEAL';
+
 export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWalletProps) {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [selectedFunding, setSelectedFunding] = useState<FundingOption>('SOL');
   const { network } = useNetwork();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
@@ -36,10 +39,24 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
     ? `https://solscan.io/account/${walletAddress}`
     : `https://solscan.io/account/${walletAddress}?cluster=${network}`;
 
+  // Get token mint addresses based on network
+  const getTokenMint = (token: FundingOption): string => {
+    if (token === 'SOL') return 'So11111111111111111111111111111111111111112'; // WSOL
+    if (token === 'USDC') {
+      return network === 'mainnet' 
+        ? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // Mainnet USDC
+        : '4zMMC9srt5Ri5X14GAgX6H8SuHpz2k1jWwzzo4Hq1oNV'; // Devnet USDC
+    }
+    // SEAL token mint (replace with actual SEAL mint address)
+    return network === 'mainnet'
+      ? 'SEAL_TOKEN_MAINNET_MINT' // Replace with actual
+      : 'SEAL_TOKEN_DEVNET_MINT'; // Replace with actual
+  };
+
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-white">Deposit SOL</h3>
+        <h3 className="text-lg font-semibold text-white">Fund Wallet</h3>
         {onRefresh && (
           <button
             onClick={onRefresh}
@@ -49,6 +66,48 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
             <RefreshCw className="w-4 h-4" />
           </button>
         )}
+      </div>
+
+      {/* Funding Option Selector */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-400 mb-2">
+          Choose Funding Method
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => setSelectedFunding('SOL')}
+            className={`p-3 rounded-lg border-2 transition-all ${
+              selectedFunding === 'SOL'
+                ? 'border-purple-500 bg-purple-500/20 text-white'
+                : 'border-gray-700 bg-gray-900/50 text-gray-400 hover:border-gray-600'
+            }`}
+          >
+            <Coins className="w-5 h-5 mx-auto mb-1" />
+            <div className="text-xs font-medium">SOL</div>
+          </button>
+          <button
+            onClick={() => setSelectedFunding('USDC')}
+            className={`p-3 rounded-lg border-2 transition-all ${
+              selectedFunding === 'USDC'
+                ? 'border-blue-500 bg-blue-500/20 text-white'
+                : 'border-gray-700 bg-gray-900/50 text-gray-400 hover:border-gray-600'
+            }`}
+          >
+            <DollarSign className="w-5 h-5 mx-auto mb-1" />
+            <div className="text-xs font-medium">USDC</div>
+          </button>
+          <button
+            onClick={() => setSelectedFunding('SEAL')}
+            className={`p-3 rounded-lg border-2 transition-all ${
+              selectedFunding === 'SEAL'
+                ? 'border-amber-500 bg-amber-500/20 text-white'
+                : 'border-gray-700 bg-gray-900/50 text-gray-400 hover:border-gray-600'
+            }`}
+          >
+            <Sparkles className="w-5 h-5 mx-auto mb-1" />
+            <div className="text-xs font-medium">SEAL</div>
+          </button>
+        </div>
       </div>
 
       {/* Balance Display */}
@@ -110,13 +169,18 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
       {/* Instructions */}
       <div className="p-4 bg-blue-900/20 border border-blue-800/50 rounded-lg mb-4">
         <p className="text-sm text-blue-200 mb-2">
-          <strong>How to deposit:</strong>
+          <strong>How to fund your wallet:</strong>
         </p>
         <ol className="text-xs text-blue-300 space-y-1 list-decimal list-inside">
           <li>Copy your wallet address above</li>
-          <li>Send SOL from your external wallet (Phantom, Solflare, etc.)</li>
+          <li>Send {selectedFunding} from your external wallet (Phantom, Solflare, etc.)</li>
           <li>Or scan the QR code with a mobile wallet</li>
           <li>Your balance will update automatically</li>
+          {selectedFunding !== 'SOL' && (
+            <li className="text-yellow-300 mt-2">
+              ⚠️ Make sure you're sending {selectedFunding} tokens, not SOL
+            </li>
+          )}
         </ol>
       </div>
 

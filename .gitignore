@@ -219,3 +219,7 @@ storybook-static/
 tmp/
 temp/
 .tmp/
+
+# Chrome binaries (testing/downloaded) #
+#########################################
+chrome/

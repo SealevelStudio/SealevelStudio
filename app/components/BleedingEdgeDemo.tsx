@@ -3,6 +3,7 @@
 import React from "react";
 import { BleedingEdgeWrapper } from "./BleedingEdgeWrapper";
 import { Sparkles, Zap, Cpu } from "lucide-react";
+import { LogoWatermark } from "./LogoWatermark";
 
 /**
  * Demo page showing the Bleeding Edge stack in action
@@ -11,8 +12,10 @@ import { Sparkles, Zap, Cpu } from "lucide-react";
 export function BleedingEdgeDemo() {
   return (
     <BleedingEdgeWrapper enabled={true}>
-      <div className="min-h-screen p-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen p-8 relative">
+        {/* Logo Watermark */}
+        <LogoWatermark opacity={0.04} position="center right" scale={0.4} rotation={-5} />
+        <div className="max-w-4xl mx-auto relative z-10">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
