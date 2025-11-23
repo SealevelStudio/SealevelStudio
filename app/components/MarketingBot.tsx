@@ -106,9 +106,6 @@ export function MarketingBot({ tokenSymbol = 'TOKEN', tokenName = 'My Token' }: 
       return;
     }
 
-    // Deduct credits
-    updateCredits(-COST_PER_POST);
-
     // Call AI to generate message
     try {
       const response = await fetch('/api/ai/marketing-gen', {
@@ -121,54 +118,89 @@ export function MarketingBot({ tokenSymbol = 'TOKEN', tokenName = 'My Token' }: 
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`AI generation failed: ${response.status}`);
+      }
+
       const data = await response.json();
-      if (data.success && data.message) {
-        const msg = data.message;
-        setGeneratedMessage(msg);
-        
-        // Post to Platforms
-        const results = [];
-        
-        if (twitterReady) {
-          try {
-            await fetch('/api/twitter/posts', {
+      if (!data.success || !data.message) {
+        throw new Error(data.error || 'Failed to generate message');
+      }
+
+      const msg = data.message;
+      setGeneratedMessage(msg);
+      
+      // Post to Platforms
+      const results = [];
+      let hasError = false;
+      
+      if (twitterReady) {
+        try {
+          const twitterResponse = await fetch('/api/twitter/posts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: msg })
+          });
+          
+          if (twitterResponse.ok) {
+            results.push('Twitter');
+          } else {
+            console.error('Twitter post failed:', await twitterResponse.text());
+            hasError = true;
+          }
+        } catch (e) {
+          console.error('Twitter post failed:', e);
+          hasError = true;
+        }
+      }
+
+      if (telegramReady && telegramChatIds.length > 0) {
+        try {
+          // Post to all configured chat IDs
+          let telegramSuccess = false;
+          for (const chatId of telegramChatIds) {
+            if (!chatId) continue;
+            const telegramResponse = await fetch('/api/telegram/messages', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ content: msg })
+              body: JSON.stringify({ content: msg, chatId })
             });
-            results.push('Twitter');
-          } catch (e) {
-            console.error('Twitter post failed:', e);
-          }
-        }
-
-        if (telegramReady && telegramChatIds.length > 0) {
-          try {
-            // Post to first configured chat ID for now (or all)
-            for (const chatId of telegramChatIds) {
-              if (!chatId) continue;
-              await fetch('/api/telegram/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: msg, chatId })
-              });
+            
+            if (telegramResponse.ok) {
+              telegramSuccess = true;
+            } else {
+              console.error('Telegram post failed for chatId:', chatId, await telegramResponse.text());
             }
-            results.push('Telegram');
-          } catch (e) {
-            console.error('Telegram post failed:', e);
           }
+          
+          if (telegramSuccess) {
+            results.push('Telegram');
+          } else {
+            hasError = true;
+          }
+        } catch (e) {
+          console.error('Telegram post failed:', e);
+          hasError = true;
         }
+      }
 
-        if (results.length > 0) {
-          const historyMsg = `[${results.join(', ')}] ${msg}`;
-          setMessageHistory(prev => [historyMsg, ...prev].slice(0, 10));
-          setPostCount(prev => prev + 1);
-        } else {
-          setMessageHistory(prev => [`[FAILED] ${msg}`, ...prev].slice(0, 10));
-        }
+      // Only deduct credits if at least one post succeeded
+      if (results.length > 0) {
+        // Deduct credits only after successful posting
+        updateCredits(-COST_PER_POST);
+        
+        const historyMsg = `[${results.join(', ')}] ${msg}`;
+        setMessageHistory(prev => [historyMsg, ...prev].slice(0, 10));
+        setPostCount(prev => prev + 1);
+      } else {
+        // No posts succeeded - don't deduct credits
+        setMessageHistory(prev => [`[FAILED - No credits charged] ${msg}`, ...prev].slice(0, 10));
+        console.warn('Campaign post failed - credits not deducted');
       }
     } catch (error) {
       console.error("Failed to generate marketing message:", error);
+      // Don't deduct credits on error
+      setMessageHistory(prev => [`[ERROR - No credits charged] ${error instanceof Error ? error.message : 'Unknown error'}`, ...prev].slice(0, 10));
       setIsRunning(false);
     }
   }, [

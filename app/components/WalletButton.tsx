@@ -5,10 +5,12 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Wallet, LogOut } from 'lucide-react';
 import { useNetwork } from '../contexts/NetworkContext';
+import { useUser } from '../contexts/UserContext';
 
 export const WalletButton = () => {
   const { publicKey, disconnect, wallet } = useWallet();
   const { network } = useNetwork();
+  const { user } = useUser();
 
   // Force wallet to reconnect when network changes
   const handleNetworkSwitch = async () => {
@@ -24,6 +26,26 @@ export const WalletButton = () => {
     }
   };
 
+  // Show custodial wallet if available, otherwise show external wallet options
+  if (user?.walletAddress) {
+    return (
+      <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 bg-gray-800 px-4 py-2 rounded-lg text-sm font-medium text-gray-300">
+          <Wallet className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {user.walletAddress.slice(0, 4)}...{user.walletAddress.slice(-4)}
+          </span>
+          {user.balance !== undefined && (
+            <span className="text-xs text-gray-500 ml-2">
+              {user.balance.toFixed(2)} SOL
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback to external wallet connection (optional)
   if (publicKey) {
     return (
       <div className="flex items-center space-x-2">

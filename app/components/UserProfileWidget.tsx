@@ -1,31 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Twitter, Send, LogOut, User as UserIcon, Wallet, Coins } from 'lucide-react';
+import { Twitter, Send, LogOut, User as UserIcon, Wallet, Coins, Loader2 } from 'lucide-react';
+import { DepositWallet } from './DepositWallet';
 
 export function UserProfileWidget() {
-  const { user, linkTwitter, linkTelegram, logout } = useUser();
-  const { connected } = useWallet();
+  const { user, isLoading, linkTwitter, linkTelegram, logout, refreshBalance, createWallet } = useUser();
+  const [isLinkingTwitter, setIsLinkingTwitter] = useState(false);
+  const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
+  const [showDeposit, setShowDeposit] = useState(false);
 
-  if (!connected) {
+  if (isLoading) {
     return (
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 flex items-center justify-between">
+      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+        <div className="flex items-center justify-center space-x-3">
+          <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+          <span className="text-sm text-gray-400">Loading wallet...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-purple-900/50 rounded-full flex items-center justify-center">
             <Wallet className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white">Connect Wallet</h3>
-            <p className="text-xs text-gray-400">Sign in to access dashboard</p>
+            <h3 className="text-sm font-medium text-white">Creating your wallet...</h3>
+            <p className="text-xs text-gray-400">Please wait</p>
           </div>
         </div>
-        <WalletMultiButton className="!bg-purple-600 hover:!bg-purple-700 !h-10 !px-4 !text-sm" />
       </div>
     );
   }
-
-  if (!user) return null;
 
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
@@ -38,7 +47,9 @@ export function UserProfileWidget() {
             <h3 className="text-lg font-semibold text-white">
               {user.walletAddress.slice(0, 4)}...{user.walletAddress.slice(-4)}
             </h3>
-            <p className="text-xs text-gray-400">Welcome back, Commander</p>
+            <p className="text-xs text-gray-400">
+              {user.balance !== undefined ? `${user.balance.toFixed(4)} SOL` : 'Loading balance...'}
+            </p>
           </div>
         </div>
         <button 
@@ -48,6 +59,34 @@ export function UserProfileWidget() {
         >
           <LogOut className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* Wallet Balance & Deposit */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-700/50 mb-3">
+          <div className="flex items-center space-x-2">
+            <Wallet className="w-5 h-5 text-purple-400" />
+            <span className="text-sm text-gray-300">Wallet Balance</span>
+          </div>
+          <span className="text-lg font-bold text-white">
+            {user.balance !== undefined ? `${user.balance.toFixed(4)} SOL` : '---'}
+          </span>
+        </div>
+        <button
+          onClick={() => setShowDeposit(!showDeposit)}
+          className="w-full py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg font-medium text-sm transition-all"
+        >
+          {showDeposit ? 'Hide Deposit' : 'Deposit SOL'}
+        </button>
+        {showDeposit && (
+          <div className="mt-4">
+            <DepositWallet 
+              walletAddress={user.walletAddress}
+              balance={user.balance}
+              onRefresh={refreshBalance}
+            />
+          </div>
+        )}
       </div>
 
       {/* Social Links */}
@@ -61,10 +100,18 @@ export function UserProfileWidget() {
           </div>
           {!user.isTwitterLinked && (
             <button 
-              onClick={linkTwitter}
-              className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs rounded-md transition-colors border border-blue-500/30"
+              onClick={async () => {
+                setIsLinkingTwitter(true);
+                try {
+                  await linkTwitter();
+                } finally {
+                  setIsLinkingTwitter(false);
+                }
+              }}
+              disabled={isLinkingTwitter}
+              className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs rounded-md transition-colors border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Connect
+              {isLinkingTwitter ? 'Opening...' : 'Connect'}
             </button>
           )}
         </div>
@@ -78,10 +125,18 @@ export function UserProfileWidget() {
           </div>
           {!user.isTelegramLinked && (
             <button 
-              onClick={linkTelegram}
-              className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs rounded-md transition-colors border border-blue-400/30"
+              onClick={async () => {
+                setIsLinkingTelegram(true);
+                try {
+                  await linkTelegram();
+                } finally {
+                  setIsLinkingTelegram(false);
+                }
+              }}
+              disabled={isLinkingTelegram}
+              className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs rounded-md transition-colors border border-blue-400/30 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Connect
+              {isLinkingTelegram ? 'Opening...' : 'Connect'}
             </button>
           )}
         </div>
