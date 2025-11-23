@@ -48,6 +48,7 @@ import { ComingSoonBanner } from './components/ui/ComingSoonBanner';
 import { SEAL_TOKEN_ECONOMICS } from './lib/seal-token/config';
 import { UserProvider } from './contexts/UserContext';
 import { UserProfileWidget } from './components/UserProfileWidget';
+import { SocialConnectButton } from './components/SocialConnectButton';
 import { QuickLaunch } from './components/QuickLaunch';
 import { MarketingBot } from './components/MarketingBot';
 import { RuglessLaunchpad } from './components/RuglessLaunchpad';
@@ -705,6 +706,7 @@ function Header({
       </div>
       <div className="flex items-center space-x-4">
         <UserProfileWidget />
+        <SocialConnectButton />
         <button className="flex items-center space-x-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 transition-colors relative">
           <span>{networks[network].name}</span>
           <ChevronDown className="h-4 w-4" />
@@ -1593,6 +1595,237 @@ function AppContent() {
           cost: 'Usage billed per connector (coming soon)',
           disclaimer: 'Never paste production API keys into shared demos.',
         },
+        launchpad: {
+          featureName: 'Rugless Launchpad',
+          description: 'Initializing token launch platform with fair launch mechanics and liquidity matching.',
+          directions: [
+            'Enter token details and supply',
+            'Configure liquidity pool and launch parameters',
+            'Review and execute launch transaction',
+          ],
+          cost: 'Platform fee + network transaction costs',
+          disclaimer: 'Ensure you have proper authority and comply with local regulations.',
+        },
+        tools: {
+          featureName: 'Developer Dashboard',
+          description: 'Loading developer tools, token management, and automation features.',
+          directions: [
+            'Navigate between launch, management, and analytics tabs',
+            'Use token manager for freeze/thaw/burn operations',
+            'Configure automation bots for marketing',
+          ],
+          cost: 'Free tier available; premium features require SEAL tokens',
+          disclaimer: 'Developer tools require appropriate token authority.',
+        },
+        premium: {
+          featureName: 'Premium Services',
+          description: 'Accessing premium features including wallet management, bundler, and advertising tools.',
+          directions: [
+            'Browse available premium services',
+            'Connect wallet for SEAL token payments',
+            'Activate services as needed',
+          ],
+          cost: 'Varies by service; see pricing page',
+          disclaimer: 'Premium services require SEAL token balance.',
+        },
+        wallets: {
+          featureName: 'Wallet Manager',
+          description: 'Loading wallet management interface for multi-wallet operations.',
+          directions: [
+            'Import or create new wallets',
+            'Manage wallet permissions and access',
+            'Export wallet information securely',
+          ],
+          cost: 'Free for basic wallet management',
+          disclaimer: 'Never share private keys. Store securely offline.',
+        },
+        advertising: {
+          featureName: 'Advertising Bots',
+          description: 'Initializing automated advertising and marketing campaign tools.',
+          directions: [
+            'Configure campaign parameters',
+            'Set budget and targeting options',
+            'Monitor campaign performance',
+          ],
+          cost: 'Campaign-based pricing; see premium services',
+          disclaimer: 'Ensure compliance with advertising regulations.',
+        },
+        social: {
+          featureName: 'Social Features',
+          description: 'Loading social media integration and community management tools.',
+          directions: [
+            'Connect social media accounts',
+            'Configure posting schedules',
+            'Monitor engagement metrics',
+          ],
+          cost: 'Included in premium subscription',
+          disclaimer: 'Respect platform terms of service.',
+        },
+        cybersecurity: {
+          featureName: 'Cybersecurity Dashboard',
+          description: 'Initializing security tools, audit scanners, and vulnerability detection.',
+          directions: [
+            'Run security scans on smart contracts',
+            'Review audit reports and recommendations',
+            'Configure security alerts',
+          ],
+          cost: 'Free for basic scans; advanced audits require payment',
+          disclaimer: 'Security tools are informational; conduct professional audits for production.',
+        },
+        'cyber-playground': {
+          featureName: 'AI Cyber Playground',
+          description: 'Booting AI agents, autonomous trading systems, and intelligent automation.',
+          directions: [
+            'Configure AI agent strategies',
+            'Set risk parameters and limits',
+            'Monitor agent performance in real-time',
+          ],
+          cost: 'Usage-based pricing; see AI services section',
+          disclaimer: 'AI agents execute real transactions. Set appropriate limits.',
+        },
+        admin: {
+          featureName: 'Admin Analytics',
+          description: 'Loading administrative dashboard with platform metrics and user analytics.',
+          directions: [
+            'View platform usage statistics',
+            'Monitor system health and performance',
+            'Access administrative controls',
+          ],
+          cost: 'Admin access only',
+          disclaimer: 'Administrative access requires proper authorization.',
+        },
+        'rent-reclaimer': {
+          featureName: 'Rent Reclaimer',
+          description: 'Initializing tool to reclaim rent from closed accounts and optimize SOL usage.',
+          directions: [
+            'Scan for accounts eligible for rent reclamation',
+            'Review potential SOL recovery',
+            'Execute batch reclamation transactions',
+          ],
+          cost: 'Transaction fees only',
+          disclaimer: 'Reclaiming rent closes accounts permanently. Verify before executing.',
+        },
+        faucet: {
+          featureName: 'Devnet Faucet',
+          description: 'Connecting to Solana devnet faucet for test SOL distribution.',
+          directions: [
+            'Enter your devnet wallet address',
+            'Request test SOL for development',
+            'Wait for confirmation and check balance',
+          ],
+          cost: 'Free (devnet only)',
+          disclaimer: 'Devnet SOL has no real value. Use only for testing.',
+        },
+        'tools-hub': {
+          featureName: 'Tools Hub',
+          description: 'Loading centralized hub for all developer tools and utilities.',
+          directions: [
+            'Browse available tools and services',
+            'Navigate to specific tools from the hub',
+            'Access quick actions and shortcuts',
+          ],
+          cost: 'Free access',
+          disclaimer: 'Tools may have individual usage costs.',
+        },
+        charts: {
+          featureName: 'Charts & Visualizations',
+          description: 'Loading market analytics, price charts, and on-chain data visualizations.',
+          directions: [
+            'Select tokens or pools to analyze',
+            'Customize chart timeframes and metrics',
+            'Export data for further analysis',
+          ],
+          cost: 'Free for basic charts; premium data requires subscription',
+          disclaimer: 'Charts are for informational purposes only.',
+        },
+        revenue: {
+          featureName: 'Pricing & Revenue',
+          description: 'Loading pricing information, revenue dashboard, and subscription management.',
+          directions: [
+            'View service pricing and tiers',
+            'Check subscription status and usage',
+            'Manage payment methods and billing',
+          ],
+          cost: 'Varies by service tier',
+          disclaimer: 'Pricing subject to change. Check current rates.',
+        },
+        'quick-launch': {
+          featureName: 'Quick Launch',
+          description: 'Initializing simplified token launch interface for rapid deployment.',
+          directions: [
+            'Enter token name and symbol',
+            'Configure basic launch parameters',
+            'Execute launch with one click',
+          ],
+          cost: 'Platform fee + network costs',
+          disclaimer: 'Quick launch uses default settings. Review before executing.',
+        },
+        'marketing-bot': {
+          featureName: 'Marketing Bot',
+          description: 'Loading AI-powered marketing automation with multi-platform posting.',
+          directions: [
+            'Select campaign mood and frequency',
+            'Connect social media accounts',
+            'Start automated posting campaign',
+          ],
+          cost: 'Credits per post; see pricing',
+          disclaimer: 'Ensure social accounts are properly configured before starting.',
+        },
+        simulation: {
+          featureName: 'Transaction Simulator',
+          description: 'Preparing state-diff simulator for transaction testing and validation.',
+          directions: [
+            'Load transaction draft',
+            'Run simulation and review state changes',
+            'Export simulation results',
+          ],
+          cost: 'Free for basic simulations',
+          disclaimer: 'Simulations are estimates; actual execution may vary.',
+        },
+        exporter: {
+          featureName: 'Code Exporter',
+          description: 'Loading code generation tools for exporting transactions to various formats.',
+          directions: [
+            'Select export format (JS, Rust, Python, etc.)',
+            'Configure code generation options',
+            'Copy or download generated code',
+          ],
+          cost: 'Free for basic exports',
+          disclaimer: 'Generated code should be reviewed before use in production.',
+        },
+        attestation: {
+          featureName: 'VeriSol Attestation',
+          description: 'Initializing smart contract verification and attestation tools.',
+          directions: [
+            'Upload contract source code',
+            'Run verification checks',
+            'Generate attestation certificates',
+          ],
+          cost: 'Free for basic verification',
+          disclaimer: 'Attestations are not a substitute for professional audits.',
+        },
+        'rd-console': {
+          featureName: 'R&D Console',
+          description: 'Opening research and development console for advanced experimentation.',
+          directions: [
+            'Access experimental features',
+            'Run custom scripts and commands',
+            'Monitor system logs and diagnostics',
+          ],
+          cost: 'Free access',
+          disclaimer: 'R&D features may be unstable. Use with caution.',
+        },
+        'freelance-devs': {
+          featureName: 'Developer Community',
+          description: 'Loading developer marketplace and freelance developer directory.',
+          directions: [
+            'Browse available developers',
+            'Post project requirements',
+            'Connect with developers',
+          ],
+          cost: 'Platform fees apply',
+          disclaimer: 'Verify developer credentials before engaging.',
+        },
       };
 
       return contextMap[activeView] ?? baseContext;
@@ -1629,6 +1862,7 @@ function AppContent() {
           duration={4000}
           onAnimationComplete={() => setIsPageLoading(false)}
           currentFeature={getCurrentFeatureId(activeView)}
+          context={getLoadingContext()}
           onFeatureClick={(featureId) => {
             if (featureId === 'transaction-builder') {
               setActiveView('builder');

@@ -21,6 +21,7 @@ import {
   DollarSign,
   Percent,
   ArrowLeft,
+  Brain,
 } from 'lucide-react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PoolScanner } from '../lib/pools/scanner';
@@ -39,6 +40,8 @@ import { getUserMessage } from '../lib/error-handling';
 import { AnimatedInput } from './ui/AnimatedInput';
 import { AnimatedSelect } from './ui/AnimatedSelect';
 import { Arbitrage3DVisualization } from './charts/Arbitrage3DVisualization';
+import { useArbitrageAI } from '../hooks/useArbitrageAI';
+import { ArbitrageScanningResults } from '../lib/arbitrage/arbitrage-result-schema';
 
 interface ArbitrageScannerProps {
   onBuildTransaction?: (opportunity: ArbitrageOpportunity) => void;
@@ -65,6 +68,9 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
   const [selectedOpportunity, setSelectedOpportunity] = useState<ArbitrageOpportunity | null>(null);
   const [showExecutionModal, setShowExecutionModal] = useState(false);
   const [pendingOpportunity, setPendingOpportunity] = useState<ArbitrageOpportunity | null>(null);
+  const [aiResults, setAiResults] = useState<ArbitrageScanningResults | null>(null);
+  const [showAIResults, setShowAIResults] = useState(false);
+  const { analyzeScan, isLoading: isAIAnalyzing, error: aiError } = useArbitrageAI();
 
   const handleExecuteClick = (opportunity: ArbitrageOpportunity) => {
     setPendingOpportunity(opportunity);
@@ -305,6 +311,21 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
     }
   }, []);
 
+  const handleAIAnalysis = useCallback(async () => {
+    if (opportunities.length === 0) {
+      alert('No opportunities to analyze. Please scan first.');
+      return;
+    }
+
+    const results = await analyzeScan(opportunities);
+    if (results) {
+      setAiResults(results);
+      setShowAIResults(true);
+    } else if (aiError) {
+      alert(`AI Analysis Error: ${aiError}`);
+    }
+  }, [opportunities, analyzeScan, aiError]);
+
   return (
     <>
       <UnifiedAIAgents
@@ -405,6 +426,24 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
           >
             {config.autoRefresh ? <Pause size={16} /> : <Play size={16} />}
             {config.autoRefresh ? 'Auto' : 'Manual'}
+          </button>
+          <button
+            onClick={handleAIAnalysis}
+            disabled={isAIAnalyzing || opportunities.length === 0}
+            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 rounded flex items-center gap-2"
+            title={opportunities.length === 0 ? "Scan first to analyze with AI (LM Studio)" : "Analyze results with AI (LM Studio)"}
+          >
+            {isAIAnalyzing ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Brain size={16} />
+                AI Analysis
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -765,6 +804,89 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
             
             <div className="mt-4 p-2 bg-yellow-900/20 border border-yellow-900/30 rounded text-[10px] text-yellow-500/70 text-center">
                ⚠️ Warning: Auto-Mode executes immediately. Ensure you understand the risks.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Results Modal */}
+      {showAIResults && aiResults && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-slate-900 border-b border-slate-700 p-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Brain className="text-purple-400" size={20} />
+                AI Analysis Results
+              </h2>
+              <button
+                onClick={() => setShowAIResults(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Financial Summary */}
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-3">Financial Summary</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-slate-400">SOL Made:</span>
+                    <span className="ml-2 text-green-400 font-bold">{aiResults.financialSummary.solMade.toFixed(6)} SOL</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Net Profit:</span>
+                    <span className="ml-2 text-green-400 font-bold">{aiResults.financialSummary.netSolProfit.toFixed(6)} SOL</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Gas Fees Paid:</span>
+                    <span className="ml-2 text-red-400">{aiResults.financialSummary.gasFeesPaid.toFixed(6)} SOL</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">SOL Deposited:</span>
+                    <span className="ml-2">{aiResults.financialSummary.solDeposited.toFixed(6)} SOL</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Statistics */}
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-teal-400">{aiResults.probableTrades.length}</div>
+                  <div className="text-sm text-slate-400">Opportunities</div>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-green-400">{aiResults.tradesExecuted.length}</div>
+                  <div className="text-sm text-slate-400">Executed</div>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-red-400">{aiResults.tradesFailed.length}</div>
+                  <div className="text-sm text-slate-400">Failed</div>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-yellow-400">{aiResults.tradesMissed.length}</div>
+                  <div className="text-sm text-slate-400">Missed</div>
+                </div>
+              </div>
+
+              {/* Should Repeat */}
+              {aiResults.shouldRepeat && (
+                <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="text-yellow-400" size={20} />
+                    <span className="font-semibold">Continue Scanning Recommended</span>
+                  </div>
+                  <p className="text-slate-300 text-sm">{aiResults.repeatReason || 'AI recommends continuing the scan.'}</p>
+                </div>
+              )}
+
+              {/* Raw JSON (collapsible) */}
+              <details className="bg-slate-800/30 rounded-lg">
+                <summary className="p-3 cursor-pointer text-slate-400 hover:text-white">View Full JSON</summary>
+                <pre className="p-4 text-xs overflow-x-auto text-slate-300">
+                  {JSON.stringify(aiResults, null, 2)}
+                </pre>
+              </details>
             </div>
           </div>
         </div>
