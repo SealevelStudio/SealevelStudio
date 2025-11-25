@@ -167,7 +167,10 @@ export function FeatureHighlightLoader({
 
         if (elapsed >= duration) {
           clearInterval(interval);
-          // Don't auto-complete, wait for user interaction
+          // Auto-advance after a short delay
+          setTimeout(() => {
+            handleEnterApp();
+          }, 500);
         }
       }, 16);
 
@@ -179,7 +182,7 @@ export function FeatureHighlightLoader({
       setShowLoader(false);
       document.body.style.overflow = '';
     }
-  }, [isLoading, duration]);
+  }, [isLoading, duration, handleEnterApp]);
 
   const handleEnterApp = useCallback(() => {
     setUserReady(true);
@@ -236,7 +239,7 @@ export function FeatureHighlightLoader({
       }}
       tabIndex={-1}
     >
-      <div className="min-h-screen flex flex-col items-center justify-center py-8 px-4">
+      <div className="min-h-screen flex flex-col items-center justify-start md:justify-center py-8 px-4 pb-32">
       {/* Skip Button - Subtle */}
       <button
         onClick={handleEnterApp}
