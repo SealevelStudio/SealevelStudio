@@ -1226,13 +1226,10 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
   // Default single-column layout for other views
   return (
     <>
-      <PricingBanner onNavigateToPricing={() => setActiveView('revenue')} />
-      <FreeTrialBanner />
-      
-      {/* Video Placeholder Section - Add your video here */}
-      <div className="w-full bg-gray-800/30 border-b border-gray-700/50 py-8 px-6">
+      {/* Video Placeholder Section - Shown after disclaimer/loader completes */}
+      <section className="w-full bg-gray-800/30 border-b border-gray-700/50 py-8 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="relative w-full rounded-xl overflow-hidden bg-gray-900/50 border border-gray-700/50" style={{ aspectRatio: '16/9', minHeight: '400px' }}>
+          <div className="relative w-full rounded-xl overflow-hidden bg-gray-900/50 border border-gray-700/50 shadow-2xl" style={{ aspectRatio: '16/9', minHeight: '400px' }}>
             <video
               autoPlay
               loop
@@ -1242,7 +1239,7 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
               className="w-full h-full object-cover"
               style={{ display: 'block' }}
               onError={(e) => {
-                console.error('Video failed to load, showing placeholder');
+                console.error('App video failed to load, showing placeholder');
                 const videoElement = e.currentTarget as HTMLVideoElement;
                 videoElement.style.display = 'none';
                 // Show placeholder message
@@ -1251,9 +1248,13 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
                   placeholder.style.display = 'flex';
                 }
               }}
+              onLoadedData={() => {
+                console.log('App video loaded successfully');
+              }}
             >
               <source src="/app-video-placeholder.mp4" type="video/mp4" />
-              {/* Add your video source here */}
+              <source src="/app-video-placeholder.webm" type="video/webm" />
+              Your browser does not support the video tag.
             </video>
             {/* Placeholder when video is missing */}
             <div 
@@ -1269,7 +1270,10 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <PricingBanner onNavigateToPricing={() => setActiveView('revenue')} />
+      <FreeTrialBanner />
       
       <main className="flex-1 overflow-y-auto p-6 md:p-8">
         {activeView === 'inspector' && <AccountInspectorView connection={connection} network={network} publicKey={publicKey} />}
