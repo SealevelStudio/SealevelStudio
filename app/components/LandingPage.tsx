@@ -198,8 +198,8 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
 
       {/* Hero Section */}
       <main className="pt-24">
-        <section className="relative container mx-auto max-w-7xl px-6 py-20 md:py-32 text-center">
-          <div className="absolute inset-0 max-w-4xl mx-auto h-3/4 -translate-y-1/4 bg-purple-900/40 blur-3xl rounded-full -z-10"></div>
+        <section className="relative container mx-auto max-w-7xl px-6 py-20 md:py-32 text-center" style={{ zIndex: 1 }}>
+          <div className="absolute inset-0 max-w-4xl mx-auto h-3/4 -translate-y-1/4 bg-purple-900/40 blur-3xl rounded-full -z-10 pointer-events-none"></div>
           
           {/* Logo - Centered in Hero */}
           <div className="mb-12 flex justify-center">
@@ -333,28 +333,29 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
             )}
           </div>
 
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('Get Started button clicked', { selectedBlockchain, onGetStarted: !!onGetStarted });
-              if (onGetStarted) {
-                onGetStarted(selectedBlockchain || undefined);
-              } else {
-                console.error('onGetStarted handler is not defined');
-              }
-            }}
-            className={`px-8 py-3 text-base font-medium rounded-lg text-white transition-all shadow-lg cursor-pointer ${
-              selectedChainData
-                ? `${selectedChainData.gradient} hover:opacity-90`
-                : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
-            } focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 hover:shadow-indigo-500/30`}
-          >
-            {selectedChainData
-              ? `Get Started on ${selectedChainData.name}`
-              : 'Get Started'}
-          </button>
+          <div className="relative z-10 mt-8">
+            <button 
+              type="button"
+              onClick={() => {
+                console.log('Get Started button clicked', { selectedBlockchain, onGetStarted: !!onGetStarted });
+                if (onGetStarted) {
+                  onGetStarted(selectedBlockchain || undefined);
+                } else {
+                  console.error('onGetStarted handler is not defined');
+                }
+              }}
+              className={`px-8 py-3 text-base font-medium rounded-lg text-white transition-all shadow-lg ${
+                selectedChainData
+                  ? `${selectedChainData.gradient} hover:opacity-90`
+                  : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
+              } focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 hover:shadow-indigo-500/30 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer`}
+              disabled={!onGetStarted}
+            >
+              {selectedChainData
+                ? `Get Started on ${selectedChainData.name}`
+                : 'Get Started'}
+            </button>
+          </div>
         </section>
 
         {/* Problem Section */}
@@ -572,16 +573,31 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
               muted
               playsInline
               preload="auto"
-              className="h-32 md:h-40 lg:h-48 w-auto opacity-80"
-              style={{ maxHeight: '192px' }}
+              className="h-32 md:h-40 lg:h-48 w-auto opacity-90 hover:opacity-100 transition-opacity"
+              style={{ maxHeight: '192px', display: 'block' }}
               onError={(e) => {
-                console.error('Video failed to load:', e);
-                e.currentTarget.style.display = 'none';
+                console.error('Logo video failed to load:', e);
+                const videoElement = e.currentTarget as HTMLVideoElement;
+                videoElement.style.display = 'none';
+                // Try to show logo image as fallback
+                const fallbackImg = videoElement.nextElementSibling as HTMLImageElement;
+                if (fallbackImg && fallbackImg.tagName === 'IMG') {
+                  fallbackImg.style.display = 'block';
+                }
+              }}
+              onLoadedData={() => {
+                console.log('Logo video loaded successfully');
               }}
             >
               <source src="/logo-video.mp4" type="video/mp4" />
-              <source src="/logo-video.webm" type="video/webm" />
             </video>
+            {/* Fallback image if video fails */}
+            <img
+              src="/sea-level-logo.png"
+              alt="Sealevel Studio Logo"
+              className="h-32 md:h-40 lg:h-48 w-auto opacity-80 hidden"
+              style={{ maxHeight: '192px', display: 'none' }}
+            />
           </div>
           
           <div className="text-center text-gray-500 mb-4">
