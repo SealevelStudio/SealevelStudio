@@ -1228,6 +1228,49 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
     <>
       <PricingBanner onNavigateToPricing={() => setActiveView('revenue')} />
       <FreeTrialBanner />
+      
+      {/* Video Placeholder Section - Add your video here */}
+      <div className="w-full bg-gray-800/30 border-b border-gray-700/50 py-8 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="relative w-full rounded-xl overflow-hidden bg-gray-900/50 border border-gray-700/50" style={{ aspectRatio: '16/9', minHeight: '400px' }}>
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              className="w-full h-full object-cover"
+              style={{ display: 'block' }}
+              onError={(e) => {
+                console.error('Video failed to load, showing placeholder');
+                const videoElement = e.currentTarget as HTMLVideoElement;
+                videoElement.style.display = 'none';
+                // Show placeholder message
+                const placeholder = videoElement.nextElementSibling as HTMLElement;
+                if (placeholder) {
+                  placeholder.style.display = 'flex';
+                }
+              }}
+            >
+              <source src="/app-video-placeholder.mp4" type="video/mp4" />
+              {/* Add your video source here */}
+            </video>
+            {/* Placeholder when video is missing */}
+            <div 
+              className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 bg-gray-900/80 border-2 border-dashed border-gray-700"
+              style={{ display: 'none' }}
+            >
+              <svg className="w-16 h-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <p className="text-lg font-medium mb-2">Video Placeholder</p>
+              <p className="text-sm text-gray-400">Place your video file at: <code className="bg-gray-800 px-2 py-1 rounded">/public/app-video-placeholder.mp4</code></p>
+              <p className="text-xs text-gray-500 mt-2">Or update the video source in page.tsx</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <main className="flex-1 overflow-y-auto p-6 md:p-8">
         {activeView === 'inspector' && <AccountInspectorView connection={connection} network={network} publicKey={publicKey} />}
         {activeView === 'simulation' && <SimulationView transactionDraft={transactionPreview?.transaction} />}

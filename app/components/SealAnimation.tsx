@@ -158,59 +158,75 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
 
   // Prioritize video over canvas animation
   useEffect(() => {
+    // Default to canvas animation initially, then check for video
+    setUseVideo(false);
+    
     const checkVideo = async () => {
       try {
-        // Check for MP4 video file
+        // Simple check - try to fetch the video file
         const response = await fetch('/sea-lion-animation.mp4', { method: 'HEAD' });
         if (response.ok) {
           setUseVideo(true);
-          console.log('Using sea lion MP4 animation');
+          console.log('Video found: /sea-lion-animation.mp4');
           return;
         }
 
-        // Fallback to alternate MP4
+        // Try alternate video
         const altResponse = await fetch('/sea-lion-animation.1mp4', { method: 'HEAD' });
         if (altResponse.ok) {
           setUseVideo(true);
-          console.log('Using alternate sea lion MP4 animation');
+          console.log('Video found: /sea-lion-animation.1mp4');
           return;
         }
 
-        console.log('MP4 video not found, canvas animation disabled');
+        console.log('No video files found, using canvas animation');
         setUseVideo(false);
       } catch (error) {
-        console.log('Video check failed, canvas animation disabled:', error);
+        console.log('Video check failed, using canvas animation:', error);
         setUseVideo(false);
       }
     };
-    checkVideo();
+
+    // Check after a short delay
+    const timeoutId = setTimeout(checkVideo, 100);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // If video is available, use it
   if (useVideo) {
     return (
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        className={`seal-animation ${className}`}
-        style={{
-          width: size,
-          height: size,
-          display: 'block',
-          filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.5))',
-          objectFit: 'contain',
-        }}
-        onError={() => {
-          // Fallback to canvas if video fails to load
-          setUseVideo(false);
-        }}
+      <div 
+        className={`relative flex items-center justify-center ${className}`}
+        style={{ width: size, height: size }}
       >
-        <source src="/sea-lion-animation.mp4" type="video/mp4" />
-        <source src="/sea-lion-animation.webm" type="video/webm" />
-      </video>
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="seal-animation"
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.5))',
+            objectFit: 'contain',
+          }}
+          onError={(e) => {
+            console.error('Video failed to load, falling back to canvas');
+            // Fallback to canvas if video fails to load
+            setUseVideo(false);
+          }}
+          onLoadedData={() => {
+            console.log('Video loaded and ready to play');
+          }}
+        >
+          <source src="/sea-lion-animation.mp4" type="video/mp4" />
+          <source src="/sea-lion-animation.1mp4" type="video/mp4" />
+        </video>
+      </div>
     );
   }
 

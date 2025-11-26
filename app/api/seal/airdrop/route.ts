@@ -60,7 +60,10 @@ export async function POST(request: NextRequest) {
     }
     
     // Apply lock early to prevent race conditions
+    // Track whether record existed before so we can properly revert
     const existingRecord = airdropStore.get(walletAddress);
+    const wasNewRecord = !existingRecord;
+    
     if (existingRecord) {
       airdropStore.updateStatus(walletAddress, 'claimed');
     } else {
@@ -105,19 +108,17 @@ export async function POST(request: NextRequest) {
         }
     } catch (error) {
         // Revert lock if verification fails
-        if (existingRecord) {
+        if (wasNewRecord) {
+            // If we created a new record, remove it or set to reserved
+            const currentRecord = airdropStore.get(walletAddress);
+            if (currentRecord) {
+                currentRecord.status = 'reserved';
+                currentRecord.claimedAt = null;
+                airdropStore.save(currentRecord);
+            }
+        } else if (existingRecord) {
+            // If record existed before, revert to its previous status
             airdropStore.updateStatus(walletAddress, 'reserved');
-        } else {
-            // If we created it, set to reserved (or we could delete it, but reserved is safer for tracking)
-            airdropStore.save({
-                id: `claim_${Date.now()}_${walletAddress.slice(0, 8)}`,
-                wallet: walletAddress,
-                amount: 10000,
-                status: 'reserved',
-                requiresCNFT: true,
-                createdAt: new Date().toISOString(),
-                claimedAt: null
-            });
         }
         return NextResponse.json({ error: error instanceof Error ? error.message : 'Verification failed' }, { status: 403 });
     }
@@ -156,19 +157,17 @@ export async function POST(request: NextRequest) {
       );
     } catch (error) {
       // Revert claim status on failure to allow retry
-      if (existingRecord) {
+      if (wasNewRecord) {
+        // If we created a new record, update it to reserved
+        const currentRecord = airdropStore.get(walletAddress);
+        if (currentRecord) {
+          currentRecord.status = 'reserved';
+          currentRecord.claimedAt = null;
+          airdropStore.save(currentRecord);
+        }
+      } else if (existingRecord) {
+        // If record existed before, revert to its previous status
         airdropStore.updateStatus(walletAddress, 'reserved');
-      } else {
-        // If we created it, set to reserved
-        airdropStore.save({
-          id: `claim_${Date.now()}_${walletAddress.slice(0, 8)}`, // ID changes but that's fine
-          wallet: walletAddress,
-          amount: 10000,
-          status: 'reserved',
-          requiresCNFT: true,
-          createdAt: new Date().toISOString(),
-          claimedAt: null
-        });
       }
       throw error;
     }
