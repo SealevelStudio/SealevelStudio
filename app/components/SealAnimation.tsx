@@ -12,6 +12,7 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationRef = useRef<number>();
   const [useVideo, setUseVideo] = useState(false);
+  const [videoChecked, setVideoChecked] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -158,8 +159,9 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
 
   // Prioritize video over canvas animation
   useEffect(() => {
-    // Default to canvas animation initially, then check for video
+    // Always start with canvas, then check for video in the background
     setUseVideo(false);
+    setVideoChecked(false);
     
     const checkVideo = async () => {
       try {
@@ -167,7 +169,7 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
         const response = await fetch('/sea-lion-animation.mp4', { method: 'HEAD' });
         if (response.ok) {
           setUseVideo(true);
-          console.log('Video found: /sea-lion-animation.mp4');
+          setVideoChecked(true);
           return;
         }
 
@@ -175,30 +177,39 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
         const altResponse = await fetch('/sea-lion-animation.1mp4', { method: 'HEAD' });
         if (altResponse.ok) {
           setUseVideo(true);
-          console.log('Video found: /sea-lion-animation.1mp4');
+          setVideoChecked(true);
           return;
         }
 
-        console.log('No video files found, using canvas animation');
+        setVideoChecked(true);
         setUseVideo(false);
       } catch (error) {
-        console.log('Video check failed, using canvas animation:', error);
+        setVideoChecked(true);
         setUseVideo(false);
       }
     };
 
-    // Check after a short delay
-    const timeoutId = setTimeout(checkVideo, 100);
+    // Check after a short delay - don't block rendering
+    const timeoutId = setTimeout(checkVideo, 200);
     return () => clearTimeout(timeoutId);
   }, []);
 
-  // If video is available, use it
-  if (useVideo) {
-    return (
-      <div 
-        className={`relative flex items-center justify-center ${className}`}
-        style={{ width: size, height: size }}
-      >
+  // Always render canvas, but hide it when video is available
+  return (
+    <div className={`relative flex items-center justify-center ${className}`}
+         style={{ width: size, height: size }}>
+      {/* Canvas animation - always rendered */}
+      <canvas
+        ref={canvasRef}
+        style={{ 
+          width: '100%', 
+          height: '100%',
+          display: useVideo && videoChecked ? 'none' : 'block'
+        }}
+      />
+      
+      {/* Video - shown only when available and checked */}
+      {useVideo && videoChecked && (
         <video
           ref={videoRef}
           autoPlay
@@ -208,6 +219,9 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
           preload="auto"
           className="seal-animation"
           style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
             width: '100%',
             height: '100%',
             display: 'block',
@@ -215,8 +229,7 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
             objectFit: 'contain',
           }}
           onError={(e) => {
-            console.error('Video failed to load, falling back to canvas');
-            // Fallback to canvas if video fails to load
+            console.error('Video failed to load, using canvas animation');
             setUseVideo(false);
           }}
           onLoadedData={() => {
@@ -226,22 +239,7 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
           <source src="/sea-lion-animation.mp4" type="video/mp4" />
           <source src="/sea-lion-animation.1mp4" type="video/mp4" />
         </video>
-      </div>
-    );
-  }
-
-  // No fallback - use canvas animation
-  return (
-    <div className={`relative flex items-center justify-center ${className}`}
-         style={{ width: size, height: size }}>
-      <canvas
-        ref={canvasRef}
-        style={{ 
-          width: '100%', 
-          height: '100%',
-          display: 'block'
-        }}
-      />
+      )}
     </div>
   );
 }
