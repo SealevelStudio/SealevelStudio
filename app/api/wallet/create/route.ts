@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // If vanityPrefix is provided, generate addresses until we find one that matches
     let keypair: Keypair;
     let publicKey: string;
-    let secretKey: Uint8Array;
+    let secretKey: Uint8Array | undefined;
     let attempts = 0;
     const maxAttempts = vanityPrefix ? 100000 : 1; // Only try once if no vanity prefix
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       }
 
       // If we didn't find a match, return error
-      if (attempts >= maxAttempts) {
+      if (!secretKey || attempts >= maxAttempts) {
         return NextResponse.json(
           { 
             error: `Could not generate address starting with "${normalizedPrefix}" after ${maxAttempts} attempts. Try a shorter prefix.`, 
@@ -85,6 +85,14 @@ export async function POST(request: NextRequest) {
       keypair = Keypair.generate();
       publicKey = keypair.publicKey.toBase58();
       secretKey = keypair.secretKey;
+    }
+
+    // Ensure secretKey is assigned (TypeScript guard)
+    if (!secretKey) {
+      return NextResponse.json(
+        { error: 'Failed to generate wallet keypair', success: false },
+        { status: 500 }
+      );
     }
 
     // Encrypt the secret key using AES-256-GCM for secure storage in cookies
