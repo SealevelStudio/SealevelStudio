@@ -1416,6 +1416,16 @@ function AppContent() {
     }
   }, []);
 
+  // Stable callbacks for loader to prevent re-renders - MUST be before any conditional returns
+  const handleLoaderComplete = useCallback(() => {
+    setIsPageLoading(false);
+  }, []);
+
+  const handleLoaderEnter = useCallback(() => {
+    // Stay on current view when entering
+    setIsPageLoading(false);
+  }, []);
+
   const handleGetStarted = (blockchain?: BlockchainType) => {
     // Wrap everything in a try-catch to catch any errors
     try {
@@ -1524,16 +1534,6 @@ function AppContent() {
     setIsPageLoading(true); // Show loading animation when going back to landing
     setCurrentScreen('landing');
   };
-
-  // Stable callbacks for loader to prevent re-renders - MUST be before any conditional returns
-  const handleLoaderComplete = useCallback(() => {
-    setIsPageLoading(false);
-  }, []);
-
-  const handleLoaderEnter = useCallback(() => {
-    // Stay on current view when entering
-    setIsPageLoading(false);
-  }, []);
 
   let content: React.ReactNode;
 
