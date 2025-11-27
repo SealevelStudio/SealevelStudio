@@ -727,14 +727,24 @@ function Header({
           <ChevronDown className="h-4 w-4 group-hover:text-purple-400 transition-colors" />
           <select
             value={network}
-            onChange={(e) => setNetwork(e.target.value as keyof typeof NETWORKS)}
+            onChange={(e) => {
+              const newNetwork = e.target.value as keyof typeof NETWORKS;
+              // Block mainnet access
+              if (newNetwork === 'mainnet') {
+                console.warn('Mainnet access is disabled. This site is devnet-only.');
+                return;
+              }
+              setNetwork(newNetwork);
+            }}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           >
-            {Object.entries(networks).map(([key, config]) => (
-              <option key={key} value={key}>
-                {config.name}
-              </option>
-            ))}
+            {Object.entries(networks)
+              .filter(([key]) => key !== 'mainnet') // Hide mainnet option
+              .map(([key, config]) => (
+                <option key={key} value={key}>
+                  {config.name}
+                </option>
+              ))}
           </select>
         </button>
         
@@ -1868,11 +1878,39 @@ function AppContent() {
           description: 'Initializing simplified token launch interface for rapid deployment.',
           directions: [
             'Enter token name and symbol',
-            'Configure basic launch parameters',
-            'Execute launch with one click',
+            'Upload or generate token image',
+            'Review launch details',
+            'Execute launch - transaction auto-broadcasts to Twitter & Telegram',
           ],
           cost: 'Platform fee + network costs',
-          disclaimer: 'Quick launch uses default settings. Review before executing.',
+          disclaimer: 'Quick launch uses default settings. Transaction signature is automatically broadcast to all social platforms.',
+          extraNote: '🚀 Transaction address is broadcast everywhere automatically!',
+        },
+        'rugless-launchpad': {
+          featureName: 'Rugless Launchpad',
+          description: 'Loading advanced token launchpad with full customization and protection.',
+          directions: [
+            'Configure token parameters (supply, liquidity, SEAL stake)',
+            'Upload token image or use AI generation',
+            'Review launch economics and protection',
+            'Launch - transaction signature broadcasts to Twitter & Telegram automatically',
+          ],
+          cost: 'Platform fee + SOL lock + SEAL stake',
+          disclaimer: 'Liquidity is locked for 7 days. Transaction signature is automatically shared on all social platforms.',
+          extraNote: '🔒 Rugless protection + 📢 Auto-broadcast enabled',
+        },
+        'token-launcher': {
+          featureName: 'Token Launcher',
+          description: 'Loading token launch tools with automated social media broadcasting.',
+          directions: [
+            'Choose Quick Launch or Rugless Launchpad',
+            'Configure your token',
+            'Launch and watch transaction broadcast everywhere',
+            'Transaction signature automatically posted to Twitter & Telegram',
+          ],
+          cost: 'Varies by launch type',
+          disclaimer: 'All launches automatically broadcast transaction signatures to configured social platforms.',
+          extraNote: '📢 Every launch transaction is broadcast automatically!',
         },
         'marketing-bot': {
           featureName: 'Marketing Bot',

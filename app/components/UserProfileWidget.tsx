@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { Twitter, Send, LogOut, User as UserIcon, Wallet, Coins, Loader2, ChevronDown, Mail, Sparkles } from 'lucide-react';
+import { Twitter, Send, LogOut, User as UserIcon, Wallet, Coins, Loader2, ChevronDown, Mail, Sparkles, Settings } from 'lucide-react';
 import { DepositWallet } from './DepositWallet';
+import { Settings as SettingsComponent } from './Settings';
 
 export function UserProfileWidget() {
   const { user, isLoading, linkTwitter, linkTelegram, logout, refreshBalance, createWallet } = useUser();
@@ -9,6 +10,7 @@ export function UserProfileWidget() {
   const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [email, setEmail] = useState('');
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   // Compact header version - social connect is handled by SocialConnectButton in header
@@ -229,7 +231,7 @@ export function UserProfileWidget() {
             </div>
 
             {/* Credits / Status */}
-            <div className="p-4">
+            <div className="p-4 border-b border-gray-700/50">
               <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-700/50">
                 <div className="flex items-center space-x-2">
                   <Coins className="w-4 h-4 text-yellow-500" />
@@ -238,8 +240,27 @@ export function UserProfileWidget() {
                 <span className="text-sm font-bold text-white">{user.credits.toLocaleString()}</span>
               </div>
             </div>
+
+            {/* Settings Button */}
+            <div className="p-4">
+              <button
+                onClick={() => {
+                  setShowSettings(true);
+                  setShowDropdown(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium text-sm transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </button>
+            </div>
           </div>
         </>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsComponent onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

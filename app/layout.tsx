@@ -8,6 +8,7 @@ import { NetworkProvider } from './contexts/NetworkContext'
 import { TutorialProvider } from './contexts/TutorialContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ChunkErrorHandler } from './components/ChunkErrorHandler'
+import { DevnetOnlyGuard } from './components/DevnetOnlyGuard'
 import './globals.css'
 import './styles/design-system.css'
 import './styles/animations.css'
@@ -57,11 +58,13 @@ export default function RootLayout({
         <ChunkErrorHandler />
         <ErrorBoundary>
           <NetworkProvider>
-            <WalletProvider>
-              <TutorialProvider>
-                {children}
-              </TutorialProvider>
-            </WalletProvider>
+            <DevnetOnlyGuard>
+              <WalletProvider>
+                <TutorialProvider>
+                  {children}
+                </TutorialProvider>
+              </WalletProvider>
+            </DevnetOnlyGuard>
           </NetworkProvider>
         </ErrorBoundary>
         <ClientOnly>

@@ -133,6 +133,48 @@ const FEATURES: Feature[] = [
       'Cross-platform integration',
       'Content scheduling'
     ]
+  },
+  {
+    id: 'token-launcher',
+    title: 'Token Launcher',
+    description: 'Launch rugless tokens with automated social broadcasting',
+    icon: <Zap className="h-6 w-6" />,
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/10 border-orange-500/30',
+    features: [
+      'Quick launch in under 60 seconds',
+      'Rugless launch protection',
+      'Auto-broadcast to Twitter & Telegram',
+      'Transaction signature sharing'
+    ]
+  },
+  {
+    id: 'quick-launch',
+    title: 'Quick Launch',
+    description: 'Rapid token deployment with default settings',
+    icon: <Zap className="h-6 w-6" />,
+    color: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/10 border-yellow-500/30',
+    features: [
+      'One-click token creation',
+      'AI-generated token images',
+      'Automatic social media posts',
+      'Transaction broadcast everywhere'
+    ]
+  },
+  {
+    id: 'rugless-launchpad',
+    title: 'Rugless Launchpad',
+    description: 'Advanced token launch with full customization',
+    icon: <ShieldCheck className="h-6 w-6" />,
+    color: 'text-green-400',
+    bgColor: 'bg-green-500/10 border-green-500/30',
+    features: [
+      'Custom supply and liquidity',
+      'SEAL token staking',
+      '7-day liquidity lock',
+      'Full transaction broadcasting'
+    ]
   }
 ];
 
@@ -215,8 +257,8 @@ export function FeatureHighlightLoader({
     if (onFeatureClick) {
       onFeatureClick(featureId);
     }
-    // For now, just start with transaction builder
-    if (featureId === 'transaction-builder') {
+    // Auto-enter for supported features
+    if (['transaction-builder', 'quick-launch', 'rugless-launchpad', 'token-launcher'].includes(featureId)) {
       handleEnterApp();
     }
   };
@@ -388,6 +430,9 @@ export function FeatureHighlightLoader({
                       {currentFeature.id === 'security-tools' && "Advanced smart contract verification can detect vulnerabilities before they cost you money!"}
                       {currentFeature.id === 'market-analytics' && "Real-time on-chain metrics provide insights that traditional exchanges can't offer!"}
                       {currentFeature.id === 'social-features' && "Automated social posting helps maintain consistent community engagement across platforms!"}
+                      {currentFeature.id === 'token-launcher' && "Every token launch automatically broadcasts the transaction signature to Twitter and Telegram for maximum visibility!"}
+                      {currentFeature.id === 'quick-launch' && "Launch tokens in under 60 seconds with automatic social media broadcasting of your transaction!"}
+                      {currentFeature.id === 'rugless-launchpad' && "Advanced token launches with rugless protection and automatic transaction broadcasting to all platforms!"}
                     </>
                   )}
                 </p>
