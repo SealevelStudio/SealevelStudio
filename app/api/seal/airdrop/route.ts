@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     // BUT trusting the client is bad.
     // Let's verify via an internal fetch to our own API which handles the DAS lookup.
     
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const checkUrl = new URL('/api/verisol/beta-tester/check', baseUrl);
     checkUrl.searchParams.set('wallet', walletAddress);
     const checkResponse = await fetch(checkUrl.toString());
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
     const isClaimed = airdropStore.isClaimed(walletAddress);
     
     // Verify cNFT ownership
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const checkUrl = new URL('/api/verisol/beta-tester/check', baseUrl);
     checkUrl.searchParams.set('wallet', walletAddress);
     const checkResponse = await fetch(checkUrl.toString());

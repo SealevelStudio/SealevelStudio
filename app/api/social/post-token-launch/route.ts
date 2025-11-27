@@ -159,7 +159,7 @@ async function postToTwitter(params: {
   }
 
   // Call existing Twitter API endpoint
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/twitter/posts`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/twitter/posts`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ async function postToTelegram(params: {
   }
 
   // Call existing Telegram API endpoint
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/telegram/messages`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/telegram/messages`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

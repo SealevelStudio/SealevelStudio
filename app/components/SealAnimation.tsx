@@ -11,9 +11,12 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationRef = useRef<number>();
-  const [useVideo, setUseVideo] = useState(false);
+  const [useVideo, setUseVideo] = useState<boolean | null>(null); // null = checking, true = use video, false = use canvas
 
   useEffect(() => {
+    // Only start canvas animation if video is not being used
+    if (useVideo) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -154,9 +157,9 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [size]);
+  }, [size, useVideo]);
 
-  // Prioritize video over canvas animation
+  // Prioritize video over canvas animation - check immediately on mount
   useEffect(() => {
     const checkVideo = async () => {
       try {
@@ -176,45 +179,59 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
           return;
         }
 
-        console.log('MP4 video not found, canvas animation disabled');
+        console.log('MP4 video not found, using canvas animation');
         setUseVideo(false);
       } catch (error) {
-        console.log('Video check failed, canvas animation disabled:', error);
+        console.log('Video check failed, using canvas animation:', error);
         setUseVideo(false);
       }
     };
     checkVideo();
   }, []);
 
-  // If video is available, use it
-  if (useVideo) {
+  // Show nothing while checking for video
+  if (useVideo === null) {
     return (
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        className={`seal-animation ${className}`}
-        style={{
-          width: size,
-          height: size,
-          display: 'block',
-          filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.5))',
-          objectFit: 'contain',
-        }}
-        onError={() => {
-          // Fallback to canvas if video fails to load
-          setUseVideo(false);
-        }}
-      >
-        <source src="/sea-lion-animation.mp4" type="video/mp4" />
-        <source src="/sea-lion-animation.webm" type="video/webm" />
-      </video>
+      <div className={`relative ${className}`} style={{ width: size, height: size }}>
+        {/* Placeholder while checking */}
+      </div>
     );
   }
 
-  // No fallback - use canvas animation
+  // If video is available, use it
+  if (useVideo) {
+    return (
+      <div className={`relative ${className}`} style={{ width: size, height: size }}>
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="seal-animation"
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            position: 'relative',
+            zIndex: 10,
+            filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.5))',
+            objectFit: 'contain',
+          }}
+          onError={() => {
+            // Fallback to canvas if video fails to load
+            console.log('Video failed to load, falling back to canvas');
+            setUseVideo(false);
+          }}
+        >
+          <source src="/sea-lion-animation.mp4" type="video/mp4" />
+          <source src="/sea-lion-animation.webm" type="video/webm" />
+        </video>
+      </div>
+    );
+  }
+
+  // Use canvas animation (only render when video is not available)
   return (
     <div className={`relative flex items-center justify-center ${className}`}
          style={{ width: size, height: size }}>
@@ -223,7 +240,9 @@ export function SealAnimation({ size = 200, className = '' }: SealAnimationProps
         style={{ 
           width: '100%', 
           height: '100%',
-          display: 'block'
+          display: 'block',
+          position: 'relative',
+          zIndex: 1,
         }}
       />
     </div>

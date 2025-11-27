@@ -83,6 +83,11 @@ const NETWORKS = {
     rpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_DEVNET || 'https://devnet.helius-rpc.com/?api-key=70d2a8fe-abf2-409a-98f7-3070ec200099',
     hasRebates: false,
   },
+  testnet: {
+    name: 'Testnet',
+    rpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_TESTNET || 'https://api.testnet.solana.com',
+    hasRebates: false,
+  },
 };
 
 // Default network from environment
@@ -1412,35 +1417,53 @@ function AppContent() {
   }, []);
 
   const handleGetStarted = (blockchain?: BlockchainType) => {
-    if (blockchain) {
-      setSelectedBlockchain(blockchain);
-      // Polkadot and Solana are fully supported
-      if (blockchain === 'polkadot' || blockchain === 'solana') {
-        // Continue with selected blockchain - both are functional
+    try {
+      if (blockchain) {
+        setSelectedBlockchain(blockchain);
+        // Polkadot and Solana are fully supported
+        if (blockchain === 'polkadot' || blockchain === 'solana') {
+          // Continue with selected blockchain - both are functional
+        } else {
+          // Show coming soon message for other blockchains
+          alert(`${blockchain.charAt(0).toUpperCase() + blockchain.slice(1)} support is coming soon! For now, you can use Polkadot or Solana which have full feature support.`);
+          setSelectedBlockchain('solana');
+        }
       } else {
-        // Show coming soon message for other blockchains
-        alert(`${blockchain.charAt(0).toUpperCase() + blockchain.slice(1)} support is coming soon! For now, you can use Polkadot or Solana which have full feature support.`);
+        // Default to Solana if no selection
         setSelectedBlockchain('solana');
       }
-    } else {
-      // Default to Solana if no selection
-      setSelectedBlockchain('solana');
-    }
-    
-    // Check if disclaimer needs to be shown
-    if (typeof window !== 'undefined') {
-      const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
-      if (!disclaimerAgreed) {
-        setCurrentScreen('disclaimer');
-        return;
+      
+      // Check if disclaimer needs to be shown
+      if (typeof window !== 'undefined') {
+        const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
+        if (!disclaimerAgreed) {
+          setCurrentScreen('disclaimer');
+          return;
+        }
       }
-    }
-    
-    // Proceed to tutorial or app
-    setIsPageLoading(true);
-    if (shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler')) {
-      setCurrentScreen('tutorial');
-    } else {
+      
+      // Proceed to tutorial or app
+      setIsPageLoading(true);
+      try {
+        const showAccountInspectorTutorial = shouldShowTutorial('accountInspector');
+        const showInstructionAssemblerTutorial = shouldShowTutorial('instructionAssembler');
+        
+        if (showAccountInspectorTutorial || showInstructionAssemblerTutorial) {
+          setCurrentScreen('tutorial');
+        } else {
+          setCurrentScreen('app');
+        }
+      } catch (tutorialError) {
+        console.error('Error checking tutorial:', tutorialError);
+        // Fallback to app if tutorial check fails
+        setCurrentScreen('app');
+      }
+    } catch (error) {
+      console.error('Error in handleGetStarted:', error);
+      // Show user-friendly error message
+      alert('Something went wrong. Please try again or refresh the page.');
+      // Still try to proceed to app as fallback
+      setIsPageLoading(true);
       setCurrentScreen('app');
     }
   };

@@ -91,7 +91,7 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
     }, config.refreshInterval);
 
     return () => clearInterval(interval);
-  }, [config.autoRefresh, config.refreshInterval, isScanning]);
+  }, [config.autoRefresh, config.refreshInterval, isScanning, handleScan]);
 
   const handleScan = useCallback(async () => {
     if (isScanning) return;
