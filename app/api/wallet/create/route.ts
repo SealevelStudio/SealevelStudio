@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
 
     // Generate a new Solana keypair
     // If vanityPrefix is provided, generate addresses until we find one that matches
-    let keypair: Keypair;
-    let publicKey: string;
+    let keypair: Keypair | undefined;
+    let publicKey: string | undefined;
     let secretKey: Uint8Array | undefined;
     let attempts = 0;
     const maxAttempts = vanityPrefix ? 100000 : 1; // Only try once if no vanity prefix
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       }
 
       // If we didn't find a match, return error
-      if (!secretKey || attempts >= maxAttempts) {
+      if (!secretKey || !publicKey || attempts >= maxAttempts) {
         return NextResponse.json(
           { 
             error: `Could not generate address starting with "${normalizedPrefix}" after ${maxAttempts} attempts. Try a shorter prefix.`, 
@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
       secretKey = keypair.secretKey;
     }
 
-    // Ensure secretKey is assigned (TypeScript guard)
-    if (!secretKey) {
+    // Ensure both publicKey and secretKey are assigned (TypeScript guard)
+    if (!publicKey || !secretKey) {
       return NextResponse.json(
         { error: 'Failed to generate wallet keypair', success: false },
         { status: 500 }
