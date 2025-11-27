@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Keypair } from '@solana/web3.js';
-import bs58 from 'bs58';
 import crypto from 'crypto';
 import { storeWalletEmailMapping } from '@/app/lib/wallet-recovery/database-store';
 import { createEmailVerificationToken, isEmailVerified } from '@/app/lib/wallet-recovery/email-verification';
 import { checkConnection } from '@/app/lib/database/connection';
+import { encryptWalletKey } from '@/app/lib/wallet-recovery/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,8 +36,11 @@ export async function POST(request: NextRequest) {
     const publicKey = keypair.publicKey.toBase58();
     const secretKey = keypair.secretKey;
 
-    // Encrypt the secret key for storage in cookies (legacy support)
-    const encryptedKey = bs58.encode(secretKey);
+    // Encrypt the secret key using AES-256-GCM for secure storage in cookies
+    // Note: Even with encryption, storing secrets in cookies is not ideal for production.
+    // Consider using a secure key management service (AWS KMS, HashiCorp Vault, etc.)
+    // or database storage with proper access controls.
+    const encryptedKey = encryptWalletKey(secretKey);
     
     // Create response
     const response = NextResponse.json({

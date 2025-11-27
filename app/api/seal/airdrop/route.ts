@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Check Server-Side Eligibility (Instead of client-side localStorage)
+    // Note: We do a preliminary check here, but the atomic claim happens later
+    // This early check is just for fast rejection of obviously ineligible requests
     const isClaimed = airdropStore.isClaimed(walletAddress);
     if (isClaimed) {
        return NextResponse.json(
@@ -125,27 +127,20 @@ export async function POST(request: NextRequest) {
     seedBuffer = seedBuffer.slice(0, 32);
     const treasuryKeypair = Keypair.fromSeed(seedBuffer);
 
-    // 5. Final Eligibility Check & Lock (Prevent Concurrency)
-    // Check again and lock immediately to prevent race conditions
-    if (airdropStore.isClaimed(walletAddress)) {
-      return NextResponse.json({ error: 'Airdrop already claimed' }, { status: 403 });
-    }
-
-    // Mark as claimed (optimistic lock)
-    // Create or update record to 'claimed' status
+    // 5. Atomic Eligibility Check & Lock (Prevent TOCTOU Race Condition)
+    // Use atomic tryClaim to prevent concurrent requests from both claiming
     const existingRecord = airdropStore.get(walletAddress);
-    if (existingRecord) {
-      airdropStore.updateStatus(walletAddress, 'claimed');
-    } else {
-      airdropStore.save({
-        id: `claim_${Date.now()}_${walletAddress.slice(0, 8)}`,
-        wallet: walletAddress,
-        amount: 10000,
-        status: 'claimed',
-        requiresCNFT: true,
-        createdAt: new Date().toISOString(),
-        claimedAt: new Date().toISOString()
-      });
+    const reservationData: Omit<Parameters<typeof airdropStore.tryClaim>[1], 'status' | 'claimedAt'> = {
+      id: existingRecord?.id || `claim_${Date.now()}_${walletAddress.slice(0, 8)}`,
+      wallet: walletAddress,
+      amount: 10000,
+      requiresCNFT: true,
+      createdAt: existingRecord?.createdAt || new Date().toISOString(),
+    };
+
+    const claimed = await airdropStore.tryClaim(walletAddress, reservationData);
+    if (!claimed) {
+      return NextResponse.json({ error: 'Airdrop already claimed' }, { status: 403 });
     }
 
     // Process airdrop
@@ -158,19 +153,12 @@ export async function POST(request: NextRequest) {
       );
     } catch (error) {
       // Revert claim status on failure to allow retry
-      if (existingRecord) {
+      // Note: In production with proper database transactions, this would be handled by rollback
+      const record = airdropStore.get(walletAddress);
+      if (record) {
         airdropStore.updateStatus(walletAddress, 'reserved');
-      } else {
-        // If we created it, set to reserved
-        airdropStore.save({
-          id: `claim_${Date.now()}_${walletAddress.slice(0, 8)}`, // ID changes but that's fine
-          wallet: walletAddress,
-          amount: 10000,
-          status: 'reserved',
-          requiresCNFT: true,
-          createdAt: new Date().toISOString(),
-          claimedAt: null
-        });
+        // Clear claimedAt timestamp
+        record.claimedAt = null;
       }
       throw error;
     }
