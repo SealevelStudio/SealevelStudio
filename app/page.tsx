@@ -1416,131 +1416,124 @@ function AppContent() {
     }
   }, []);
 
-  const handleGetStarted = useCallback((blockchain?: BlockchainType) => {
+  const handleGetStarted = (blockchain?: BlockchainType) => {
+    // Wrap everything in a try-catch to catch any errors
     try {
       // Ensure we're on the client side
       if (typeof window === 'undefined') {
-        console.warn('handleGetStarted called on server side, skipping');
         return;
       }
       
-      console.log('handleGetStarted called', { blockchain, shouldShowTutorial: !!shouldShowTutorial });
+      console.log('handleGetStarted called', { blockchain });
       
-      if (blockchain) {
-        setSelectedBlockchain(blockchain);
-        // Polkadot and Solana are fully supported
-        if (blockchain === 'polkadot' || blockchain === 'solana') {
-          // Continue with selected blockchain - both are functional
-        } else {
-          // Show coming soon message for other blockchains
-          alert(`${blockchain.charAt(0).toUpperCase() + blockchain.slice(1)} support is coming soon! For now, you can use Polkadot or Solana which have full feature support.`);
-          setSelectedBlockchain('solana');
-        }
-      } else {
-        // Default to Solana if no selection
+      // Set blockchain first
+      const targetBlockchain = blockchain || 'solana';
+      if (targetBlockchain !== 'polkadot' && targetBlockchain !== 'solana') {
+        alert(`${targetBlockchain.charAt(0).toUpperCase() + targetBlockchain.slice(1)} support is coming soon! For now, you can use Polkadot or Solana which have full feature support.`);
         setSelectedBlockchain('solana');
+      } else {
+        setSelectedBlockchain(targetBlockchain);
       }
       
       // Check if disclaimer needs to be shown
-      if (typeof window !== 'undefined') {
-        const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
-        if (!disclaimerAgreed) {
-          setIsPageLoading(false);
-          setCurrentScreen('disclaimer');
-          return;
-        }
+      const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
+      if (!disclaimerAgreed) {
+        setCurrentScreen('disclaimer');
+        return;
       }
       
       // Proceed to tutorial or app
       setIsPageLoading(true);
       
       // Safely check tutorial status with fallback
-      let showAccountInspectorTutorial = false;
-      let showInstructionAssemblerTutorial = false;
+      let showTutorial = false;
       
       try {
         if (shouldShowTutorial && typeof shouldShowTutorial === 'function') {
-          showAccountInspectorTutorial = shouldShowTutorial('accountInspector');
-          showInstructionAssemblerTutorial = shouldShowTutorial('instructionAssembler');
-        } else {
-          console.warn('shouldShowTutorial is not available, skipping tutorial check');
+          showTutorial = shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler');
         }
       } catch (tutorialError) {
         console.error('Error checking tutorial:', tutorialError);
-        // Continue without tutorial if check fails
+        showTutorial = false;
       }
       
-      // Navigate to appropriate screen
-      // Direct state update - React will batch these
-      if (showAccountInspectorTutorial || showInstructionAssemblerTutorial) {
-        setCurrentScreen('tutorial');
-      } else {
-        setCurrentScreen('app');
-      }
-      setIsPageLoading(false);
+      // Navigate to appropriate screen - use setTimeout to ensure state updates happen
+      setTimeout(() => {
+        setCurrentScreen(showTutorial ? 'tutorial' : 'app');
+        setIsPageLoading(false);
+      }, 10);
+      
     } catch (error) {
       console.error('Error in handleGetStarted:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        blockchain,
-        shouldShowTutorial: typeof shouldShowTutorial,
-      });
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       
       // Show user-friendly error message
       alert('Something went wrong. Please try again or refresh the page.');
       
-      // Still try to proceed to app as fallback
-      setIsPageLoading(true);
-      setCurrentScreen('app');
-      setIsPageLoading(false);
+      // Fallback: try to navigate to app
+      try {
+        setCurrentScreen('app');
+        setIsPageLoading(false);
+      } catch (fallbackError) {
+        console.error('Fallback navigation failed:', fallbackError);
+        // Last resort: reload the page
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }
     }
-  }, [shouldShowTutorial]);
+  };
 
-  const handleDisclaimerAgree = useCallback(() => {
+  const handleDisclaimerAgree = () => {
     try {
-      setIsPageLoading(true);
-      
       // Save disclaimer agreement to localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('sealevel-disclaimer-agreed', 'true');
       }
       
+      setIsPageLoading(true);
+      
       // Safely check tutorial status with fallback
-      let showAccountInspectorTutorial = false;
-      let showInstructionAssemblerTutorial = false;
+      let showTutorial = false;
       
       try {
         if (shouldShowTutorial && typeof shouldShowTutorial === 'function') {
-          showAccountInspectorTutorial = shouldShowTutorial('accountInspector');
-          showInstructionAssemblerTutorial = shouldShowTutorial('instructionAssembler');
-        } else {
-          console.warn('shouldShowTutorial is not available, skipping tutorial check');
+          showTutorial = shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler');
         }
       } catch (tutorialError) {
         console.error('Error checking tutorial:', tutorialError);
-        // Continue without tutorial if check fails
+        showTutorial = false;
       }
       
       // Navigate to appropriate screen
-      if (showAccountInspectorTutorial || showInstructionAssemblerTutorial) {
-        setCurrentScreen('tutorial');
-      } else {
-        setCurrentScreen('app');
-      }
-      setIsPageLoading(false);
+      setTimeout(() => {
+        setCurrentScreen(showTutorial ? 'tutorial' : 'app');
+        setIsPageLoading(false);
+      }, 10);
+      
     } catch (error) {
       console.error('Error in handleDisclaimerAgree:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       // Fallback to app screen
       setCurrentScreen('app');
       setIsPageLoading(false);
     }
-  }, [shouldShowTutorial]);
+  };
 
   const handleBackToLanding = () => {
     setIsPageLoading(true); // Show loading animation when going back to landing
     setCurrentScreen('landing');
   };
+
+  // Stable callbacks for loader to prevent re-renders - MUST be before any conditional returns
+  const handleLoaderComplete = useCallback(() => {
+    setIsPageLoading(false);
+  }, []);
+
+  const handleLoaderEnter = useCallback(() => {
+    // Stay on current view when entering
+    setIsPageLoading(false);
+  }, []);
 
   let content: React.ReactNode;
 
@@ -1956,16 +1949,6 @@ function AppContent() {
 
       return contextMap[activeView] ?? baseContext;
     };
-
-  // Stable callbacks for loader to prevent re-renders
-  const handleLoaderComplete = useCallback(() => {
-    setIsPageLoading(false);
-  }, []);
-
-  const handleLoaderEnter = useCallback(() => {
-    // Stay on current view when entering
-    setIsPageLoading(false);
-  }, []);
 
   // Map activeView to feature ID for loading screen
   const getCurrentFeatureId = (view: string): string => {
