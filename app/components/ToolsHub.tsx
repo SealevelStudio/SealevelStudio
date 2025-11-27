@@ -73,6 +73,15 @@ export function ToolsHub({ onBack, onNavigateToTool }: ToolsHubProps) {
       onNavigate: () => onNavigateToTool?.('rent-reclaimer'),
     },
     {
+      id: 'custodial-wallet',
+      name: 'Custodial Wallet Tool',
+      description: 'Create, reset, or export your built-in Sealevel wallet',
+      icon: <Wallet className="w-6 h-6" />,
+      category: 'utilities',
+      onNavigate: () => onNavigateToTool?.('custodial-wallet'),
+      badge: 'Updated',
+    },
+    {
       id: 'faucet',
       name: 'Devnet Faucet',
       description: 'Request free SOL for testing on devnet',

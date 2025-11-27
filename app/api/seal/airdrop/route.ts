@@ -68,11 +68,11 @@ export async function POST(request: NextRequest) {
 
     const walletPubkey = new PublicKey(walletAddress);
 
-    // Get RPC endpoint
+    // Get RPC endpoint - use devnet for demo
     const heliusApiKey = process.env.HELIUS_API_KEY || process.env.NEXT_PUBLIC_HELIUS_API_KEY;
     const rpcUrl = heliusApiKey
-      ? `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`
-      : 'https://api.mainnet-beta.solana.com';
+      ? `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`
+      : process.env.NEXT_PUBLIC_SOLANA_RPC_DEVNET || 'https://api.devnet.solana.com';
 
     const connection = new Connection(rpcUrl, 'confirmed');
 

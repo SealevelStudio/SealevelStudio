@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 
 /**
  * Helius Address Transaction History
- * GET /api/helius/address-transactions?address=...&network=mainnet&limit=100
+ * GET /api/helius/address-transactions?address=...&network=devnet&limit=100
  * 
  * Fetches transaction history for a Solana address using Helius Enhanced Transaction API
  * Returns parsed transaction history with detailed information
@@ -11,7 +11,7 @@ import { PublicKey } from '@solana/web3.js';
 
 interface AddressTransactionsRequest {
   address: string; // Solana address (public key)
-  network?: 'mainnet' | 'devnet' | 'testnet'; // Network (default: mainnet)
+  network?: 'mainnet' | 'devnet' | 'testnet'; // Network (default: devnet)
   limit?: number; // Number of transactions to return (default: 100, max: 1000)
   before?: string; // Transaction signature to fetch transactions before (for pagination)
   until?: string; // Transaction signature to fetch transactions until (for pagination)
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     
     const address = searchParams.get('address');
-    const network = (searchParams.get('network') || 'mainnet') as 'mainnet' | 'devnet' | 'testnet';
+    const network = (searchParams.get('network') || 'devnet') as 'mainnet' | 'devnet' | 'testnet';
     const limitParam = searchParams.get('limit');
     const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10)), 1000) : 100;
     const before = searchParams.get('before') || undefined;
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body: AddressTransactionsRequest = await request.json();
-    const { address, network = 'mainnet', limit = 100, before, until } = body;
+    const { address, network = 'devnet', limit = 100, before, until } = body;
 
     if (!address) {
       return NextResponse.json(

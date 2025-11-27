@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     // Use Helius fast sender endpoint for low-latency transaction submission
     // This endpoint is optimized for sending transactions to Jito and validators
     const heliusFastRpcUrl = process.env.NEXT_PUBLIC_HELIUS_FAST_RPC || `https://ewr-sender.helius-rpc.com/fast?api-key=${heliusApiKey}`;
-    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+    const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`;
     
     // Use standard RPC for getting blockhash (more reliable)
     const connection = new Connection(heliusRpcUrl, 'confirmed');
@@ -302,7 +302,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+    const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`;
     const connection = new Connection(heliusRpcUrl, 'confirmed');
 
     // Check bundle status via Jito

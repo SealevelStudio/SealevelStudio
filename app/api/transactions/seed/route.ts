@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       const featureName = FEATURES[Math.floor(Math.random() * FEATURES.length)];
       const transactionType = TRANSACTION_TYPES[Math.floor(Math.random() * TRANSACTION_TYPES.length)];
       const status = STATUSES[Math.floor(Math.random() * STATUSES.length)];
-      const network = ['mainnet', 'devnet', 'testnet'][Math.floor(Math.random() * 3)] as 'mainnet' | 'devnet' | 'testnet';
+      const network = 'devnet' as 'mainnet' | 'devnet' | 'testnet';
       
       // Create timestamp between 1 day ago and now
       const daysAgo = Math.random() * 7; // Last 7 days

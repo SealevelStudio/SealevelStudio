@@ -506,7 +506,15 @@ export function FeatureHighlightLoader({
       {/* Footer */}
       <div className="mt-8 text-center relative z-10">
         <p className="text-gray-600 text-xs">
-          Built for the Solana ecosystem • Open source • Community driven
+          Built for the Solana ecosystem • Open source • Community driven •{' '}
+          <a 
+            href="https://discord.gg/sealevelstudios" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            Join Discord @sealevelstudios
+          </a>
         </p>
       </div>
       </div>

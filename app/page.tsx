@@ -57,6 +57,7 @@ import { RuglessLaunchpad } from './components/RuglessLaunchpad';
 import { PumpFunSniper } from './components/PumpFunSniper';
 import { BleedingEdgeWrapper } from './components/BleedingEdgeWrapper';
 import { PricingBanner } from './components/PricingBanner';
+import { CustodialWalletTool } from './components/CustodialWalletTool';
 
 // Suppress hydration warnings during development
 if (typeof window !== 'undefined') {
@@ -93,7 +94,7 @@ const NETWORKS = {
 };
 
 // Default network from environment
-const DEFAULT_NETWORK = (process.env.NEXT_PUBLIC_SOLANA_NETWORK as keyof typeof NETWORKS) || 'mainnet';
+const DEFAULT_NETWORK = (process.env.NEXT_PUBLIC_SOLANA_NETWORK as keyof typeof NETWORKS) || 'devnet';
 
 // Types for our account data
 interface ParsedAccountData {
@@ -1158,6 +1159,10 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
     return <WalletManager onBack={() => setActiveView('inspector')} />;
   }
 
+  if (activeView === 'custodial-wallet') {
+    return <CustodialWalletTool onBack={() => setActiveView('tools-hub')} />;
+  }
+
   // R&D Console is a floating component, always available
   // Navigation item is for reference - console can be opened from anywhere
 
@@ -1385,6 +1390,7 @@ function AppContent() {
   const [activeView, setActiveView] = useState('inspector');
   const [rdConsoleMinimized, setRdConsoleMinimized] = useState(true);
   const [selectedBlockchain, setSelectedBlockchain] = useState<BlockchainType | null>('solana');
+  const bleedingEdgeEnabled = process.env.NEXT_PUBLIC_BLEEDING_EDGE_ENABLED === 'true';
   const { publicKey } = useWallet();
   const { network, setNetwork } = useNetwork();
   const { shouldShowTutorial, completeTutorial } = useTutorial();
@@ -1558,7 +1564,7 @@ function AppContent() {
     );
   } else {
     // Main app interface
-    const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'tools' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'admin' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot' || activeView === 'presale' || activeView === 'cyber-playground' || activeView === 'tools-hub' || activeView === 'revenue' || activeView === 'rent-reclaimer' || activeView === 'faucet' || activeView === 'launchpad' || activeView === 'pumpfun-sniper' || activeView === 'twitter-bot' || activeView === 'substack-bot' || activeView === 'telegram-bot' || activeView === 'charts';
+    const isFullScreenView = activeView === 'builder' || activeView === 'scanner' || activeView === 'tools' || activeView === 'premium' || activeView === 'web2' || activeView === 'wallets' || activeView === 'cybersecurity' || activeView === 'docs' || activeView === 'admin' || activeView === 'bundler' || activeView === 'advertising' || activeView === 'social' || activeView === 'service-bot' || activeView === 'presale' || activeView === 'cyber-playground' || activeView === 'tools-hub' || activeView === 'revenue' || activeView === 'rent-reclaimer' || activeView === 'faucet' || activeView === 'launchpad' || activeView === 'pumpfun-sniper' || activeView === 'twitter-bot' || activeView === 'substack-bot' || activeView === 'telegram-bot' || activeView === 'charts' || activeView === 'custodial-wallet';
 
     // Get loading quote based on destination view
     const getLoadingQuote = () => {
@@ -2006,6 +2012,37 @@ function AppContent() {
       }
     };
 
+    const appLayout = (
+      <div className="h-screen flex flex-col bg-gray-900">
+        {!isFullScreenView && (
+          <Header 
+            network={network} 
+            setNetwork={setNetwork} 
+            networks={NETWORKS} 
+            wallet={<WalletButton />}
+            onBackToLanding={handleBackToLanding}
+          />
+        )}
+        
+        <div className="flex-1 flex overflow-hidden">
+          {!isFullScreenView && (
+            <Sidebar 
+              activeView={activeView} 
+              setActiveView={setActiveView}
+              onViewChange={() => setIsPageLoading(true)}
+            />
+          )}
+          <MainContent 
+            activeView={activeView}
+            setActiveView={setActiveView}
+            connection={connection} 
+            network={network} 
+            publicKey={publicKey} 
+          />
+        </div>
+      </div>
+    );
+
     content = (
       <ClientOnly>
         {/* Feature Highlight Loader Overlay */}
@@ -2033,36 +2070,11 @@ function AppContent() {
           onEnterApp={handleLoaderEnter}
         />
         
-        <BleedingEdgeWrapper enabled={true}>
-          <div className="h-screen flex flex-col bg-gray-900">
-            {!isFullScreenView && (
-              <Header 
-                network={network} 
-                setNetwork={setNetwork} 
-                networks={NETWORKS} 
-                wallet={<WalletButton />}
-                onBackToLanding={handleBackToLanding}
-              />
-            )}
-            
-            <div className="flex-1 flex overflow-hidden">
-              {!isFullScreenView && (
-                <Sidebar 
-                  activeView={activeView} 
-                  setActiveView={setActiveView}
-                  onViewChange={() => setIsPageLoading(true)}
-                />
-              )}
-              <MainContent 
-                activeView={activeView}
-                setActiveView={setActiveView}
-                connection={connection} 
-                network={network} 
-                publicKey={publicKey} 
-              />
-            </div>
-          </div>
-        </BleedingEdgeWrapper>
+        {bleedingEdgeEnabled ? (
+          <BleedingEdgeWrapper enabled>{appLayout}</BleedingEdgeWrapper>
+        ) : (
+          appLayout
+        )}
         
         {/* R&D Console - Floating (always available) */}
         <AdvancedRAndDConsole 

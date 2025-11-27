@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         body.transactionData ? JSON.stringify(body.transactionData) : null,
         body.status || 'pending',
         body.errorMessage || null,
-        body.network || 'mainnet',
+        body.network || 'devnet',
       ]
     );
 

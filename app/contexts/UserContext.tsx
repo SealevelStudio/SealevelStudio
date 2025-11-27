@@ -31,7 +31,7 @@ interface UserContextType {
   updateCredits: (amount: number) => void;
   addCampaign: (campaign: Campaign) => void;
   refreshBalance: () => Promise<void>;
-  createWallet: (email?: string) => Promise<void>;
+  createWallet: (email?: string, vanityPrefix?: string) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -68,7 +68,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const createWallet = async (email?: string) => {
+  const createWallet = async (email?: string, vanityPrefix?: string) => {
     try {
       // Generate a session ID for this user
       let sessionId = localStorage.getItem('session_id');
@@ -80,7 +80,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/wallet/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, email }),
+        body: JSON.stringify({ sessionId, email, vanityPrefix }),
       });
 
       const data = await response.json();

@@ -16,6 +16,7 @@
     "test:advanced-tx": "ts-node scripts/test-advanced-transactions.ts",
     "test:feature-loader": "ts-node scripts/test-feature-loader.ts",
     "test:devnet-tx": "ts-node --project tsconfig.scripts.json scripts/devnet-transaction-tests.ts",
+    "check:attestation": "ts-node scripts/check-attestation-setup.ts",
     "test:social-bots": "ts-node --project tsconfig.scripts.json scripts/test-social-media-bots.ts",
     "train:solana-ai": "ts-node scripts/train-solana-ai.ts",
     "setup:merkle-tree": "ts-node scripts/setup-merkle-tree.ts",

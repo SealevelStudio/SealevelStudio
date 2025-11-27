@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 interface ParseTransactionRequest {
   signature: string; // Transaction signature
-  network?: 'mainnet' | 'devnet' | 'testnet'; // Network (default: mainnet)
+  network?: 'mainnet' | 'devnet' | 'testnet'; // Network (default: devnet)
 }
 
 interface HeliusParsedTransaction {
@@ -119,7 +119,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body: ParseTransactionRequest = await request.json();
-    const { signature, network = 'mainnet' } = body;
+    const { signature, network = 'devnet' } = body;
 
     if (!signature) {
       return NextResponse.json(
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const signature = searchParams.get('signature');
-    const network = (searchParams.get('network') || 'mainnet') as 'mainnet' | 'devnet' | 'testnet';
+    const network = (searchParams.get('network') || 'devnet') as 'mainnet' | 'devnet' | 'testnet';
 
     if (!signature) {
       return NextResponse.json(

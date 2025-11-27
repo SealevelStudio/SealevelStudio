@@ -26,15 +26,66 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { userId, sessionId, email, skipEmailVerification } = body;
+    const { userId, sessionId, email, skipEmailVerification, vanityPrefix } = body;
 
     // Generate a unique identifier for this wallet
     const walletId = userId || sessionId || crypto.randomBytes(16).toString('hex');
 
     // Generate a new Solana keypair
-    const keypair = Keypair.generate();
-    const publicKey = keypair.publicKey.toBase58();
-    const secretKey = keypair.secretKey;
+    // If vanityPrefix is provided, generate addresses until we find one that matches
+    let keypair: Keypair;
+    let publicKey: string;
+    let secretKey: Uint8Array;
+    let attempts = 0;
+    const maxAttempts = vanityPrefix ? 100000 : 1; // Only try once if no vanity prefix
+
+    if (vanityPrefix && typeof vanityPrefix === 'string' && vanityPrefix.trim().length > 0) {
+      // Validate prefix format (Base58 characters only)
+      const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+      const normalizedPrefix = vanityPrefix.toUpperCase().trim();
+
+      if (!base58Regex.test(normalizedPrefix)) {
+        return NextResponse.json(
+          { error: 'Vanity prefix contains invalid characters. Use only Base58 characters (no 0, O, I, l).', success: false },
+          { status: 400 }
+        );
+      }
+
+      if (normalizedPrefix.length > 8) {
+        return NextResponse.json(
+          { error: 'Vanity prefix must be 8 characters or less', success: false },
+          { status: 400 }
+        );
+      }
+
+      // Generate keypairs until we find one that starts with the prefix
+      while (attempts < maxAttempts) {
+        attempts++;
+        keypair = Keypair.generate();
+        publicKey = keypair.publicKey.toBase58();
+
+        if (publicKey.toUpperCase().startsWith(normalizedPrefix)) {
+          secretKey = keypair.secretKey;
+          break;
+        }
+      }
+
+      // If we didn't find a match, return error
+      if (attempts >= maxAttempts) {
+        return NextResponse.json(
+          { 
+            error: `Could not generate address starting with "${normalizedPrefix}" after ${maxAttempts} attempts. Try a shorter prefix.`, 
+            success: false 
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Generate a random keypair
+      keypair = Keypair.generate();
+      publicKey = keypair.publicKey.toBase58();
+      secretKey = keypair.secretKey;
+    }
 
     // Encrypt the secret key using AES-256-GCM for secure storage in cookies
     // Note: Even with encryption, storing secrets in cookies is not ideal for production.
