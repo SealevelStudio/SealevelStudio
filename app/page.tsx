@@ -46,7 +46,7 @@ import { DeveloperCommunity } from './components/DeveloperCommunity';
 import { DeveloperDashboard } from './components/DeveloperDashboard';
 import { ComingSoonBanner } from './components/ui/ComingSoonBanner';
 import { SEAL_TOKEN_ECONOMICS } from './lib/seal-token/config';
-import { UserProvider } from './contexts/UserContext';
+import { UserProvider, useUser } from './contexts/UserContext';
 import { UserProfileWidget } from './components/UserProfileWidget';
 import { LoginGate } from './components/LoginGate';
 import { RecentTransactions } from './components/RecentTransactions';
@@ -1375,16 +1375,14 @@ interface LoaderContextInfo {
 export default function App() {
   return (
     <UserProvider>
-      <LoginGate>
-        <AppContent />
-      </LoginGate>
+      <AppContent />
     </UserProvider>
   );
 }
 
 function AppContent() {
   // ALL HOOKS MUST BE CALLED AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
-  const [currentScreen, setCurrentScreen] = useState<'landing' | 'disclaimer' | 'tutorial' | 'app'>('landing');
+  const [currentScreen, setCurrentScreen] = useState<'landing' | 'feature-loader' | 'wallet-connect' | 'disclaimer' | 'tutorial' | 'app'>('landing');
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [previousView, setPreviousView] = useState<string>('');
   const [activeView, setActiveView] = useState('inspector');
@@ -1430,7 +1428,11 @@ function AppContent() {
   // Stable callbacks for loader to prevent re-renders - MUST be before any conditional returns
   const handleLoaderComplete = useCallback(() => {
     setIsPageLoading(false);
-  }, []);
+    // After feature loader completes, go to wallet connect
+    if (currentScreen === 'feature-loader') {
+      setCurrentScreen('wallet-connect');
+    }
+  }, [currentScreen]);
 
   const handleLoaderEnter = useCallback(() => {
     // Stay on current view when entering
@@ -1456,33 +1458,9 @@ function AppContent() {
         setSelectedBlockchain(targetBlockchain);
       }
       
-      // Check if disclaimer needs to be shown
-      const disclaimerAgreed = localStorage.getItem('sealevel-disclaimer-agreed');
-      if (!disclaimerAgreed) {
-        setCurrentScreen('disclaimer');
-        return;
-      }
-      
-      // Proceed to tutorial or app
+      // Show feature loader first
       setIsPageLoading(true);
-      
-      // Safely check tutorial status with fallback
-      let showTutorial = false;
-      
-      try {
-        if (shouldShowTutorial && typeof shouldShowTutorial === 'function') {
-          showTutorial = shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler');
-        }
-      } catch (tutorialError) {
-        console.error('Error checking tutorial:', tutorialError);
-        showTutorial = false;
-      }
-      
-      // Navigate to appropriate screen - use setTimeout to ensure state updates happen
-      setTimeout(() => {
-        setCurrentScreen(showTutorial ? 'tutorial' : 'app');
-        setIsPageLoading(false);
-      }, 10);
+      setCurrentScreen('feature-loader');
       
     } catch (error) {
       console.error('Error in handleGetStarted:', error);
@@ -1512,8 +1490,6 @@ function AppContent() {
         localStorage.setItem('sealevel-disclaimer-agreed', 'true');
       }
       
-      setIsPageLoading(true);
-      
       // Safely check tutorial status with fallback
       let showTutorial = false;
       
@@ -1527,10 +1503,7 @@ function AppContent() {
       }
       
       // Navigate to appropriate screen
-      setTimeout(() => {
-        setCurrentScreen(showTutorial ? 'tutorial' : 'app');
-        setIsPageLoading(false);
-      }, 10);
+      setCurrentScreen(showTutorial ? 'tutorial' : 'app');
       
     } catch (error) {
       console.error('Error in handleDisclaimerAgree:', error);
@@ -1546,10 +1519,58 @@ function AppContent() {
     setCurrentScreen('landing');
   };
 
+  // Check if user has wallet (for wallet-connect screen)
+  const { user } = useUser();
+
+  // Effect to handle wallet connection completion
+  useEffect(() => {
+    if (currentScreen === 'wallet-connect' && user) {
+      // User just connected wallet, proceed to disclaimer or app
+      const disclaimerAgreed = typeof window !== 'undefined' ? localStorage.getItem('sealevel-disclaimer-agreed') : null;
+      if (!disclaimerAgreed) {
+        setCurrentScreen('disclaimer');
+      } else {
+        // Check tutorial and proceed to app
+        let showTutorial = false;
+        try {
+          if (shouldShowTutorial && typeof shouldShowTutorial === 'function') {
+            showTutorial = shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler');
+          }
+        } catch (tutorialError) {
+          console.error('Error checking tutorial:', tutorialError);
+          showTutorial = false;
+        }
+        setCurrentScreen(showTutorial ? 'tutorial' : 'app');
+      }
+    }
+  }, [currentScreen, user, shouldShowTutorial]);
+
   let content: React.ReactNode;
 
   if (currentScreen === 'landing') {
     content = <LandingPage onGetStarted={handleGetStarted} />;
+  } else if (currentScreen === 'feature-loader') {
+    // Show feature loader
+    content = (
+      <FeatureHighlightLoader
+        isLoading={true}
+        duration={4000}
+        onAnimationComplete={handleLoaderComplete}
+        currentFeature="sealevel-studio"
+        context={{
+          featureName: 'Sealevel Studio',
+          description: 'Welcome to Sealevel Studio - Your Solana Development Platform',
+          directions: [
+            'Explore powerful transaction building tools',
+            'Connect your wallet to get started',
+            'Access AI agents and arbitrage scanners',
+          ],
+        }}
+      />
+    );
+  } else if (currentScreen === 'wallet-connect') {
+    // Show wallet connect (LoginGate) - it will show until user connects
+    content = <LoginGate>{null}</LoginGate>;
   } else if (currentScreen === 'disclaimer') {
     content = (
       <div className="min-h-screen bg-gray-900">
