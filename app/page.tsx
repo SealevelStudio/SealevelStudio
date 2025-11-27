@@ -48,6 +48,8 @@ import { ComingSoonBanner } from './components/ui/ComingSoonBanner';
 import { SEAL_TOKEN_ECONOMICS } from './lib/seal-token/config';
 import { UserProvider } from './contexts/UserContext';
 import { UserProfileWidget } from './components/UserProfileWidget';
+import { LoginGate } from './components/LoginGate';
+import { RecentTransactions } from './components/RecentTransactions';
 import { SocialConnectButton } from './components/SocialConnectButton';
 import { QuickLaunch } from './components/QuickLaunch';
 import { MarketingBot } from './components/MarketingBot';
@@ -696,26 +698,17 @@ function Header({
             ← Back to Home
           </button>
         )}
-        {/* Logo Video */}
+        {/* Logo */}
         <div className="flex items-center space-x-3">
-          <div className="relative">
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-10 w-auto"
-              style={{ maxHeight: '40px' }}
-              onError={(e) => {
-                console.error('Video failed to load:', e);
-                e.currentTarget.style.display = 'none';
-              }}
-            >
-              <source src="/logo-video.mp4" type="video/mp4" />
-              <source src="/logo-video.webm" type="video/webm" />
-            </video>
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-gray-900 animate-pulse"></div>
-          </div>
+          <img
+            src="/sea-level-logo.png"
+            alt="Sealevel Studio"
+            className="h-10 w-auto"
+            style={{ maxHeight: '40px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
           <div className="text-xl font-bold tracking-tighter">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-500 animate-gradient">
               Sealevel Studio
@@ -1241,7 +1234,14 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
       <PricingBanner onNavigateToPricing={() => setActiveView('revenue')} />
       <FreeTrialBanner />
       <main className="flex-1 overflow-y-auto p-6 md:p-8">
-        {activeView === 'inspector' && <AccountInspectorView connection={connection} network={network} publicKey={publicKey} />}
+        {activeView === 'inspector' && (
+          <div className="flex flex-col h-full">
+            <AccountInspectorView connection={connection} network={network} publicKey={publicKey} />
+            <div className="mt-6 px-6 pb-6">
+              <RecentTransactions featureName="account-inspector" limit={5} />
+            </div>
+          </div>
+        )}
         {activeView === 'simulation' && <SimulationView transactionDraft={transactionPreview?.transaction} />}
         {activeView === 'exporter' && <ExporterView />}
         {activeView === 'attestation' && <VeriSolAttestation connection={connection} />}
@@ -1360,7 +1360,9 @@ interface LoaderContextInfo {
 export default function App() {
   return (
     <UserProvider>
-      <AppContent />
+      <LoginGate>
+        <AppContent />
+      </LoginGate>
     </UserProvider>
   );
 }

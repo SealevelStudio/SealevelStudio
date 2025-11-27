@@ -21,7 +21,8 @@
     "setup:merkle-tree": "ts-node scripts/setup-merkle-tree.ts",
     "setup:presale-merkle-tree": "ts-node scripts/setup-presale-merkle-tree.ts",
     "verify:merkle-tree": "ts-node scripts/verify-merkle-tree.ts",
-    "webhook:server": "node scripts/webhook-server.js"
+    "webhook:server": "node scripts/webhook-server.js",
+    "seed:transactions": "ts-node scripts/seed-transactions.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

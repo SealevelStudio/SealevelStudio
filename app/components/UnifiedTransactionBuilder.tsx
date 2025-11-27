@@ -41,6 +41,8 @@ import { ArbitragePanel } from './ArbitragePanel';
 import { ArbitrageOpportunity } from '../lib/pools/types';
 import { AdvancedInstructionCard } from './AdvancedInstructionCard';
 import { TemplateSelectorModal } from './TemplateSelectorModal';
+import { useTransactionLogger } from '../hooks/useTransactionLogger';
+import { RecentTransactions } from './RecentTransactions';
 
 // --- Block to Instruction Template Mapping ---
 const BLOCK_TO_TEMPLATE: Record<string, string> = {
@@ -496,6 +498,7 @@ interface UnifiedTransactionBuilderProps {
 }
 
 export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: UnifiedTransactionBuilderProps) {
+  const { log, updateStatus } = useTransactionLogger();
   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const [viewMode, setViewMode] = useState<ViewMode>('simple');
@@ -964,6 +967,30 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         addLog(`  [${i + 1}] ${inst.template.name}`, 'info');
       }
 
+      // Log transaction build
+      const transactionId = await log(
+        'transaction-builder',
+        'build',
+        {
+          instructions: instructions.map(inst => ({
+            programId: inst.programId,
+            template: inst.template.name,
+            accounts: inst.accounts,
+          })),
+          cost: {
+            base: cost.sol,
+            platformFee: cost.platformFee.sol,
+            total: cost.total.sol,
+          },
+          viewMode,
+        }
+      );
+
+      // Store transaction ID for later update
+      if (transactionId) {
+        (transaction as any)._transactionLogId = transactionId;
+      }
+
       onTransactionBuilt?.(transaction, cost);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to build transaction';
@@ -1002,9 +1029,20 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       addLog(`Transaction sent! Signature: ${signature}`, 'success');
       addLog(`View on Solscan: https://solscan.io/tx/${signature}`, 'info');
       
+      // Update transaction log with signature
+      const transactionLogId = (builtTransaction as any)._transactionLogId;
+      if (transactionLogId) {
+        await updateStatus(transactionLogId, 'pending', signature);
+      }
+      
       addLog('Waiting for confirmation...', 'info');
       await connection.confirmTransaction(signature, 'confirmed');
       addLog('Transaction confirmed!', 'success');
+      
+      // Update transaction log to success
+      if (transactionLogId) {
+        await updateStatus(transactionLogId, 'success', signature);
+      }
       
       // Log mint address if created
       if (additionalSigners.length > 0) {
@@ -1020,6 +1058,12 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       const errorMsg = error instanceof Error ? error.message : 'Transaction failed';
       addLog(`Error: ${errorMsg}`, 'error');
       console.error('Transaction execution error:', error);
+      
+      // Update transaction log to failed
+      const transactionLogId = (builtTransaction as any)?._transactionLogId;
+      if (transactionLogId) {
+        await updateStatus(transactionLogId, 'failed', undefined, errorMsg);
+      }
     } finally {
       setIsExecuting(false);
     }
@@ -1896,6 +1940,11 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
             onClose={() => setShowArbitragePanel(false)}
           />
         )}
+      </div>
+
+      {/* Recent Transactions */}
+      <div className="border-t border-gray-700/50 p-6 bg-gray-800/30">
+        <RecentTransactions featureName="transaction-builder" limit={5} />
       </div>
 
       {/* Unified AI Agents */}
