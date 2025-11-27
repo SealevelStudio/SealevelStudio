@@ -14,7 +14,7 @@ import { rateLimitByIp, rateLimitByWallet } from '@/app/lib/security/rate-limit'
 import { airdropStore } from '@/app/lib/seal-token/server-store';
 
 export const dynamic = 'force-dynamic';
-
+ 
 /**
  * Process SEAL airdrop for beta tester
  */
