@@ -101,35 +101,20 @@ export async function POST(request: NextRequest) {
     // or database storage with proper access controls.
     const encryptedKey = encryptWalletKey(secretKey);
     
-    // Create response
-    const response = NextResponse.json({
+    // Base wallet data
+    const walletData = {
       success: true,
       wallet: {
         address: publicKey,
         walletId,
         createdAt: new Date().toISOString(),
       },
-    });
-
-    // Store wallet ID in a secure cookie (for session-based access)
-    response.cookies.set(`wallet_${walletId}`, encryptedKey, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 365, // 1 year
-    });
-
-    // Store session mapping
-    if (sessionId) {
-      response.cookies.set('wallet_session', walletId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 365,
-      });
-    }
+    };
 
     // Handle email-based wallet recovery (if email provided)
+    let emailHandled = false;
+    let emailResponseData = { ...walletData };
+
     if (email) {
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -163,20 +148,15 @@ export async function POST(request: NextRequest) {
                 secretKey
               );
 
-              // Return indication that email verification is required
-              return NextResponse.json({
-                success: true,
-                wallet: {
-                  address: publicKey,
-                  walletId,
-                  createdAt: new Date().toISOString(),
-                },
+              emailHandled = true;
+              emailResponseData = {
+                ...walletData,
                 requiresEmailVerification: true,
                 message: 'Wallet created. Please verify your email to enable recovery.',
                 ...(process.env.NODE_ENV === 'development' && verificationResult.token && {
                   devVerificationToken: verificationResult.token,
                 }),
-              });
+              };
             } catch (dbError) {
               console.error('Database storage failed, falling back to cookie-only storage:', dbError);
               // Continue with cookie-only storage
@@ -192,16 +172,12 @@ export async function POST(request: NextRequest) {
               secretKey
             );
             
-            return NextResponse.json({
-              success: true,
-              wallet: {
-                address: publicKey,
-                walletId,
-                createdAt: new Date().toISOString(),
-              },
+            emailHandled = true;
+            emailResponseData = {
+              ...walletData,
               emailLinked: true,
               message: 'Wallet created and linked to your email for recovery.',
-            });
+            };
           } catch (dbError) {
             console.error('Database storage failed, falling back to cookie-only storage:', dbError);
             // Continue with cookie-only storage
@@ -210,6 +186,27 @@ export async function POST(request: NextRequest) {
       } else {
         console.warn('Database not available. Wallet created but email recovery not available.');
       }
+    }
+
+    // Create response with appropriate data
+    const response = NextResponse.json(emailHandled ? emailResponseData : walletData);
+
+    // Store wallet ID in a secure cookie (for session-based access)
+    response.cookies.set(`wallet_${walletId}`, encryptedKey, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+    });
+
+    // Store session mapping
+    if (sessionId) {
+      response.cookies.set('wallet_session', walletId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 365,
+      });
     }
 
     return response;
