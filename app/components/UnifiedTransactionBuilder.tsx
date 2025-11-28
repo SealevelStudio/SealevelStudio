@@ -905,8 +905,13 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       return;
     }
 
-    if (!publicKey) {
-      setBuildError('Please connect your wallet to build transactions');
+    // Use custodial wallet as payer if available, otherwise external wallet
+    const payerPublicKey = user?.walletAddress 
+      ? new PublicKey(user.walletAddress)
+      : publicKey;
+
+    if (!payerPublicKey) {
+      setBuildError('Please connect your wallet or create a custodial wallet to build transactions');
       return;
     }
 
@@ -952,9 +957,9 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       const transaction = await builder.buildTransaction(draft);
 
       // Add fixed platform fee (0.0002 SOL) if a valid fee recipient is configured
-      builder.addPlatformFee(transaction, publicKey);
+      builder.addPlatformFee(transaction, payerPublicKey);
 
-      await builder.prepareTransaction(transaction, publicKey);
+      await builder.prepareTransaction(transaction, payerPublicKey);
       
       const cost = await builder.estimateCost(transaction);
       setBuiltTransaction(transaction);
