@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useNetwork } from '../contexts/NetworkContext';
 import { useUser } from '../contexts/UserContext';
+import { CopyButton } from './CopyButton';
 
 interface RentReclaimerProps {
   onBack?: () => void;
@@ -69,6 +70,7 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [reclaimedAmount, setReclaimedAmount] = useState<number | null>(null);
+  const [lastTransactionSignature, setLastTransactionSignature] = useState<string | null>(null);
   
   // Bulk scanning state
   const [scanning, setScanning] = useState(false);
@@ -255,7 +257,8 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
         return;
       }
 
-      await signAndSendTransaction(transaction);
+      const signature = await signAndSendTransaction(transaction);
+      setLastTransactionSignature(signature);
 
       const reclaimed = accountInfo.lamports / LAMPORTS_PER_SOL;
       setReclaimedAmount(reclaimed);
@@ -357,6 +360,7 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
       let totalReclaimed = 0;
       let successCount = 0;
       let failCount = 0;
+      const transactionSignatures: string[] = [];
 
       // Process in batches to avoid transaction size limits
       const batchSize = 10; // Close up to 10 accounts per transaction
@@ -383,7 +387,8 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
 
         if (transaction.instructions.length > 0) {
           try {
-            await signAndSendTransaction(transaction);
+            const signature = await signAndSendTransaction(transaction);
+            transactionSignatures.push(signature);
             successCount += transaction.instructions.length;
           } catch (err) {
             console.error('Failed to send batch transaction:', err);
@@ -394,6 +399,9 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
 
       const reclaimedSol = totalReclaimed / LAMPORTS_PER_SOL;
       setReclaimedAmount(reclaimedSol);
+      if (transactionSignatures.length > 0) {
+        setLastTransactionSignature(transactionSignatures[transactionSignatures.length - 1]);
+      }
       setSuccess(
         `Successfully closed ${successCount} account${successCount !== 1 ? 's' : ''} ` +
         `and reclaimed ${reclaimedSol.toFixed(6)} SOL${failCount > 0 ? ` (${failCount} failed)` : ''}`
@@ -499,9 +507,12 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
           {useCustodial ? (
             <div>
               {user?.walletAddress ? (
-                <p className="text-sm text-gray-300">
-                  Using custodial wallet: <span className="font-mono text-xs">{user.walletAddress.slice(0, 8)}...{user.walletAddress.slice(-8)}</span>
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-white">
+                    Using custodial wallet: <span className="font-mono text-sm text-white font-semibold">{user.walletAddress}</span>
+                  </p>
+                  <CopyButton text={user.walletAddress} size={14} />
+                </div>
               ) : (
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-yellow-400">
@@ -617,15 +628,20 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-mono text-xs text-gray-300">
-                              {account.address.slice(0, 8)}...{account.address.slice(-8)}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm text-white font-semibold">
+                                {account.address}
+                              </span>
+                              <CopyButton text={account.address} size={12} />
+                            </div>
                             <span className="text-yellow-400 font-semibold">
                               {rentSol.toFixed(6)} SOL
                             </span>
                           </div>
-                          <div className="text-xs text-gray-400">
-                            Mint: <span className="font-mono">{account.mint.slice(0, 8)}...{account.mint.slice(-8)}</span>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-gray-400">Mint:</span>
+                            <span className="font-mono text-white">{account.mint}</span>
+                            <CopyButton text={account.mint} size={12} />
                           </div>
                         </div>
                       </div>
@@ -710,13 +726,20 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
         {success && (
           <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-            <div>
+            <div className="flex-1">
               <p className="text-green-400 font-medium">Success</p>
               <p className="text-sm text-gray-300 mt-1">{success}</p>
               {reclaimedAmount !== null && (
                 <p className="text-sm text-green-300 mt-2 font-semibold">
                   Reclaimed: {reclaimedAmount.toFixed(6)} SOL
                 </p>
+              )}
+              {lastTransactionSignature && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Transaction:</span>
+                  <span className="font-mono text-xs text-white">{lastTransactionSignature}</span>
+                  <CopyButton text={lastTransactionSignature} size={12} />
+                </div>
               )}
             </div>
           </div>
@@ -739,17 +762,20 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between py-2 border-b border-gray-700">
                 <span className="text-gray-400">Address</span>
-                <span className="font-mono text-sm">{accountInfo.address}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm text-white font-semibold">{accountInfo.address}</span>
+                  <CopyButton text={accountInfo.address} size={14} />
+                </div>
               </div>
               
               <div className="flex items-center justify-between py-2 border-b border-gray-700">
                 <span className="text-gray-400">Type</span>
-                <span className="capitalize">{accountInfo.type}</span>
+                <span className="capitalize text-white">{accountInfo.type}</span>
               </div>
               
               <div className="flex items-center justify-between py-2 border-b border-gray-700">
                 <span className="text-gray-400">Balance</span>
-                <span className="font-semibold">
+                <span className="font-semibold text-white">
                   {(accountInfo.lamports / LAMPORTS_PER_SOL).toFixed(6)} SOL
                 </span>
               </div>
@@ -757,20 +783,26 @@ export function RentReclaimer({ onBack }: RentReclaimerProps) {
               {accountInfo.type === 'token' && accountInfo.mint && (
                 <div className="flex items-center justify-between py-2 border-b border-gray-700">
                   <span className="text-gray-400">Token Mint</span>
-                  <span className="font-mono text-sm">{accountInfo.mint}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm text-white font-semibold">{accountInfo.mint}</span>
+                    <CopyButton text={accountInfo.mint} size={14} />
+                  </div>
                 </div>
               )}
               
               {accountInfo.type === 'token' && accountInfo.amount && (
                 <div className="flex items-center justify-between py-2 border-b border-gray-700">
                   <span className="text-gray-400">Token Balance</span>
-                  <span>{accountInfo.amount}</span>
+                  <span className="text-white">{accountInfo.amount}</span>
                 </div>
               )}
               
               <div className="flex items-center justify-between py-2">
                 <span className="text-gray-400">Owner</span>
-                <span className="font-mono text-sm">{accountInfo.owner}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm text-white font-semibold">{accountInfo.owner}</span>
+                  <CopyButton text={accountInfo.owner || ''} size={14} />
+                </div>
               </div>
             </div>
 
