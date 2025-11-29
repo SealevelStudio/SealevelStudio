@@ -16,6 +16,7 @@ import {
   FileText,
   Droplet,
   Rocket,
+  Wallet,
 } from 'lucide-react';
 
 interface Tool {
@@ -71,6 +72,15 @@ export function ToolsHub({ onBack, onNavigateToTool }: ToolsHubProps) {
       icon: <FileText className="w-6 h-6" />,
       category: 'utilities',
       onNavigate: () => onNavigateToTool?.('rent-reclaimer'),
+    },
+    {
+      id: 'custodial-wallet',
+      name: 'Custodial Wallet Tool',
+      description: 'Create, reset, or export your built-in Sealevel wallet',
+      icon: <Wallet className="w-6 h-6" />,
+      category: 'utilities',
+      onNavigate: () => onNavigateToTool?.('custodial-wallet'),
+      badge: 'Updated',
     },
     {
       id: 'faucet',

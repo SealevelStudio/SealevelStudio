@@ -34,12 +34,18 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { TransactionBuilder } from '../lib/transaction-builder';
 import { getTemplateById, getTemplatesByCategory } from '../lib/instructions/templates';
 import { BuiltInstruction, TransactionDraft, InstructionTemplate } from '../lib/instructions/types';
+import { importTransaction } from '../lib/transaction-importer';
 import { PublicKey } from '@solana/web3.js';
 import { UnifiedAIAgents } from './UnifiedAIAgents';
 import { ArbitragePanel } from './ArbitragePanel';
 import { ArbitrageOpportunity } from '../lib/pools/types';
 import { AdvancedInstructionCard } from './AdvancedInstructionCard';
 import { TemplateSelectorModal } from './TemplateSelectorModal';
+import { useTransactionLogger } from '../hooks/useTransactionLogger';
+import { RecentTransactions } from './RecentTransactions';
+import { useUser } from '../contexts/UserContext';
+import { signTransactionWithCustodialAndSigners, shouldUseCustodialWallet } from '../lib/wallet-recovery/custodial-signer';
+import { Connection } from '@solana/web3.js';
 
 // --- Block to Instruction Template Mapping ---
 const BLOCK_TO_TEMPLATE: Record<string, string> = {
@@ -495,8 +501,10 @@ interface UnifiedTransactionBuilderProps {
 }
 
 export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: UnifiedTransactionBuilderProps) {
+  const { log, updateStatus } = useTransactionLogger();
   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
+  const { user } = useUser();
   const [viewMode, setViewMode] = useState<ViewMode>('simple');
   
   // Shared transaction state
@@ -534,6 +542,40 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
 
   // Arbitrage panel state
   const [showArbitragePanel, setShowArbitragePanel] = useState(false);
+
+  // Import state
+  const [importSignature, setImportSignature] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImport = async () => {
+    if (!importSignature || !connection) return;
+    setIsImporting(true);
+    try {
+      addLog(`Fetching transaction ${importSignature}...`, 'info');
+      const instructions = await importTransaction(connection, importSignature);
+      
+      // Merge with existing or replace? Let's replace for now as "Import" usually implies loading a specific tx.
+      // But to be safe/flexible, maybe append? No, users likely want to edit THAT tx.
+      // Let's append to avoid data loss, or offer choice. For now, append.
+      // Actually, user said "plugged into the builder", usually implies loading that tx state.
+      // Let's append to draft.
+      setTransactionDraft(prev => ({
+        ...prev,
+        instructions: [...prev.instructions, ...instructions]
+      }));
+      
+      setViewMode('advanced'); // Switch to advanced to see the instructions
+      setShowImportModal(false);
+      setImportSignature('');
+      addLog(`Successfully imported ${instructions.length} instructions`, 'success');
+    } catch (e: any) {
+      addLog(`Import failed: ${e.message}`, 'error');
+      console.error(e);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const categories = [
     { id: 'system', name: 'System', icon: '🏠' },
@@ -863,8 +905,13 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       return;
     }
 
-    if (!publicKey) {
-      setBuildError('Please connect your wallet to build transactions');
+    // Use custodial wallet as payer if available, otherwise external wallet
+    const payerPublicKey = user?.walletAddress 
+      ? new PublicKey(user.walletAddress)
+      : publicKey;
+
+    if (!payerPublicKey) {
+      setBuildError('Please connect your wallet or create a custodial wallet to build transactions');
       return;
     }
 
@@ -904,15 +951,15 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       const draft: TransactionDraft = {
         instructions,
         priorityFee: 0,
-        memo: `Sealevel Studio - ${new Date().toISOString()}`
+        memo: `sealevelstudios.xyz 🤑`
       };
 
       const transaction = await builder.buildTransaction(draft);
 
       // Add fixed platform fee (0.0002 SOL) if a valid fee recipient is configured
-      builder.addPlatformFee(transaction, publicKey);
+      builder.addPlatformFee(transaction, payerPublicKey);
 
-      await builder.prepareTransaction(transaction, publicKey);
+      await builder.prepareTransaction(transaction, payerPublicKey);
       
       const cost = await builder.estimateCost(transaction);
       setBuiltTransaction(transaction);
@@ -929,6 +976,30 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         addLog(`  [${i + 1}] ${inst.template.name}`, 'info');
       }
 
+      // Log transaction build
+      const transactionId = await log(
+        'transaction-builder',
+        'build',
+        {
+          instructions: instructions.map(inst => ({
+            programId: inst.template.programId,
+            template: inst.template.name,
+            accounts: inst.accounts,
+          })),
+          cost: {
+            base: cost.sol,
+            platformFee: cost.platformFee.sol,
+            total: cost.total.sol,
+          },
+          viewMode,
+        }
+      );
+
+      // Store transaction ID for later update
+      if (transactionId) {
+        (transaction as any)._transactionLogId = transactionId;
+      }
+
       onTransactionBuilt?.(transaction, cost);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to build transaction';
@@ -941,7 +1012,15 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
   };
 
   const executeTransaction = async () => {
-    if (!builtTransaction || !sendTransaction || !publicKey) {
+    if (!builtTransaction) {
+      addLog('Error: Transaction not built', 'error');
+      return;
+    }
+
+    // Check if we should use custodial wallet
+    const useCustodial = shouldUseCustodialWallet(user?.walletAddress);
+    
+    if (!useCustodial && (!sendTransaction || !publicKey)) {
       addLog('Error: Transaction not built or wallet not connected', 'error');
       return;
     }
@@ -953,23 +1032,66 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       // Check for additional signers (like mint keypairs from create_token_and_mint)
       const additionalSigners = (builtTransaction as any)._additionalSigners || [];
       
-      // If there are additional signers, we need to sign with them
-      // For R&D: This allows executing transactions with program-derived keypairs
-      if (additionalSigners.length > 0) {
-        addLog(`Found ${additionalSigners.length} additional signer(s) (e.g., mint keypair)`, 'info');
-        // Sign transaction with additional signers
-        additionalSigners.forEach((signer: any) => {
-          builtTransaction.partialSign(signer);
-        });
+      let signedTransaction = builtTransaction;
+      
+      if (useCustodial && user?.walletAddress) {
+        // Sign with custodial wallet (and additional signers if any)
+        addLog('Signing with custodial wallet...', 'info');
+        signedTransaction = await signTransactionWithCustodialAndSigners(
+          builtTransaction,
+          additionalSigners,
+          {
+            userWalletAddress: user.walletAddress,
+            connection,
+          }
+        );
+        addLog('Transaction signed with custodial wallet', 'success');
+      } else {
+        // Use external wallet (Phantom, etc.)
+        if (additionalSigners.length > 0) {
+          addLog(`Found ${additionalSigners.length} additional signer(s) (e.g., mint keypair)`, 'info');
+          // Sign transaction with additional signers
+          additionalSigners.forEach((signer: any) => {
+            signedTransaction.partialSign(signer);
+          });
+        }
+        
+        // External wallet will sign when sendTransaction is called
+        if (!sendTransaction) {
+          throw new Error('No wallet available for signing');
+        }
       }
       
-      const signature = await sendTransaction(builtTransaction, connection);
+      // Send transaction
+      let signature: string;
+      if (useCustodial) {
+        // For custodial wallet, we need to send the already-signed transaction
+        const serialized = signedTransaction.serialize({ requireAllSignatures: false });
+        signature = await connection.sendRawTransaction(serialized, {
+          skipPreflight: false,
+          maxRetries: 3,
+        });
+      } else {
+        // For external wallet, use sendTransaction which will prompt for signature
+        signature = await sendTransaction(signedTransaction, connection);
+      }
       addLog(`Transaction sent! Signature: ${signature}`, 'success');
       addLog(`View on Solscan: https://solscan.io/tx/${signature}`, 'info');
+      
+      // Update transaction log with signature
+      const transactionLogId = (builtTransaction as any)._transactionLogId;
+      if (transactionLogId) {
+        await updateStatus(transactionLogId, 'pending', signature);
+      }
       
       addLog('Waiting for confirmation...', 'info');
       await connection.confirmTransaction(signature, 'confirmed');
       addLog('Transaction confirmed!', 'success');
+      
+      // Update transaction log to success
+      if (transactionLogId) {
+        await updateStatus(transactionLogId, 'success', signature);
+      }
       
       // Log mint address if created
       if (additionalSigners.length > 0) {
@@ -985,6 +1107,12 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
       const errorMsg = error instanceof Error ? error.message : 'Transaction failed';
       addLog(`Error: ${errorMsg}`, 'error');
       console.error('Transaction execution error:', error);
+      
+      // Update transaction log to failed
+      const transactionLogId = (builtTransaction as any)?._transactionLogId;
+      if (transactionLogId) {
+        await updateStatus(transactionLogId, 'failed', undefined, errorMsg);
+      }
     } finally {
       setIsExecuting(false);
     }
@@ -1384,6 +1512,65 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
                               placeholder="Or paste image URL or base64 data URI"
                             />
                           </div>
+                        ) : isAmountField ? (
+                          <div className="space-y-3 pt-2">
+                             <div className="relative group">
+                                <label className="absolute -top-3.5 left-0 text-[9px] text-slate-500 font-mono uppercase tracking-wider">Amount (SOL)</label>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    placeholder="0.0"
+                                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
+                                    value={
+                                      // Only apply lamports conversion for fields that are stored in lamports
+                                      // Fields like 'initialSupply' are stored in SOL, so don't divide
+                                      (value && !isNaN(Number(value)) && (key === 'amount' || key === 'delegatedAmount' || key === 'repayAmount'))
+                                        ? (Number(value) / 1000000000).toString()
+                                        : (value && !isNaN(Number(value)) ? value : '')
+                                    }
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '') {
+                                            updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: '' });
+                                            return;
+                                        }
+                                        // Only convert to lamports for fields that should be stored in lamports
+                                        // Fields like 'initialSupply' and 'supplyCap' are stored in SOL
+                                        if (key === 'amount' || key === 'delegatedAmount' || key === 'repayAmount') {
+                                          const lamports = Math.floor(parseFloat(val) * 1000000000);
+                                          if (!isNaN(lamports)) {
+                                            updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: lamports.toString() });
+                                          }
+                                        } else {
+                                          // For fields like initialSupply, store as SOL (no conversion)
+                                          updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: val });
+                                        }
+                                    }}
+                                />
+                             </div>
+                             <div className="relative group">
+                                <label className="absolute -top-3.5 left-0 text-[9px] text-slate-500 font-mono uppercase tracking-wider">
+                                  {key === 'amount' || key === 'delegatedAmount' || key === 'repayAmount' ? 'Amount (Lamports)' : 'Amount (Raw)'}
+                                </label>
+                                <input
+                                    type="number"
+                                    placeholder="0"
+                                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors font-mono text-xs"
+                                    value={value}
+                                    onChange={(e) => updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: e.target.value })}
+                                />
+                             </div>
+                             <div className="flex items-center gap-1.5 text-[10px] text-teal-400/80 bg-teal-900/20 p-1.5 rounded border border-teal-900/30">
+                                <Zap size={10} />
+                                <span>
+                                  {key === 'amount' || key === 'delegatedAmount' || key === 'repayAmount'
+                                    ? 'AI Tip: 1 SOL = 10^9 Lamports. Use Lamports for exact precision.'
+                                    : key === 'initialSupply'
+                                    ? 'AI Tip: Enter supply in SOL units (e.g., 1.00 for 1 SOL worth of tokens).'
+                                    : 'AI Tip: Enter the amount in the appropriate unit.'}
+                                </span>
+                             </div>
+                          </div>
                         ) : (
                           <input 
                             type="text" 
@@ -1392,15 +1579,13 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
                             onBlur={() => setTimeout(() => setFocusedInputField(null), 200)}
                             onChange={(e) => {
                               let newValue = e.target.value;
-                              // Auto-convert SOL to lamports for amount fields (hidden conversion)
-                              if (isAmountField && key === 'amount' && newValue.includes('.')) {
+                              // Auto-convert SOL to lamports only for fields that should be stored in lamports
+                              // Fields like 'initialSupply' and 'supplyCap' are stored in SOL units
+                              if (isAmountField && (key === 'amount' || key === 'delegatedAmount' || key === 'repayAmount') && newValue.includes('.')) {
                                 // User entered SOL, convert to lamports behind the scenes
                                 newValue = convertSolToLamports(newValue);
                               }
-                              if (isAmountField && key === 'initialSupply' && newValue.includes('.')) {
-                                // User entered SOL, convert to lamports behind the scenes
-                                newValue = convertSolToLamports(newValue);
-                              }
+                              // For initialSupply and supplyCap, keep as SOL (no conversion)
                               updateSimpleBlockParams(selectedBlock.instanceId!, { [key]: newValue });
                             }}
                             className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 pr-10 text-sm text-white focus:border-teal-500 focus:outline-none transition-colors"
@@ -1583,6 +1768,8 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
           templates={filteredTemplates}
           onSelectTemplate={addAdvancedInstruction}
           onClose={() => setShowTemplateSelector(false)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
         />
       )}
       </div>
@@ -1645,6 +1832,14 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+            title="Import Transaction from Signature"
+          >
+            <span className="text-lg">📥</span>
+            Import
+          </button>
           <button
             onClick={() => setShowArbitragePanel(!showArbitragePanel)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -1798,6 +1993,11 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
         )}
       </div>
 
+      {/* Recent Transactions */}
+      <div className="border-t border-gray-700/50 p-6 bg-gray-800/30">
+        <RecentTransactions featureName="transaction-builder" limit={5} />
+      </div>
+
       {/* Unified AI Agents */}
       <UnifiedAIAgents
         simpleWorkflow={viewMode === 'simple' ? simpleWorkflow : []}
@@ -1827,6 +2027,77 @@ export function UnifiedTransactionBuilder({ onTransactionBuilt, onBack }: Unifie
           addLog('Analyzing transaction for optimizations...', 'info');
         }}
       />
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-lg w-full shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-teal-500" />
+            
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="text-2xl">📥</span>
+                Import Transaction
+              </h3>
+              <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-white">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">
+                  Transaction Signature
+                </label>
+                <input
+                  type="text"
+                  value={importSignature}
+                  onChange={(e) => setImportSignature(e.target.value)}
+                  placeholder="Enter transaction signature..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-teal-500 focus:outline-none transition-colors font-mono text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-2">
+                  Enter the signature of any transaction to import its instructions into the builder.
+                </p>
+              </div>
+
+              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-800 flex gap-3">
+                <Zap className="text-yellow-400 shrink-0" size={20} />
+                <div className="text-xs text-slate-300 space-y-1">
+                  <p className="font-bold text-white">AI Auto-Parse</p>
+                  <p>Our AI will attempt to map instructions to known templates. Unrecognized instructions will be imported as custom blocks.</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!importSignature || isImporting}
+                  className="px-6 py-2 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  {isImporting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg">⚡</span>
+                      Import & Build
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
