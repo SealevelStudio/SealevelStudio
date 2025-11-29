@@ -375,6 +375,12 @@ function AccountInspectorView({ connection, network, publicKey }: { connection: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'data' | 'transactions' | 'related'>('overview');
+  const [transactionHistory, setTransactionHistory] = useState<TransactionInfo[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showRawData, setShowRawData] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   // Validate if the entered string is a possible Solana address
   function isValidSolanaAddress(address: string): boolean {
@@ -540,6 +546,136 @@ function AccountInspectorView({ connection, network, publicKey }: { connection: 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
+
+  // Fetch transaction history
+  const fetchTransactionHistory = async (address: string) => {
+    if (!connection || !address) return;
+    
+    setLoadingTransactions(true);
+    try {
+      const pubkey = new PublicKey(address);
+      const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 20 });
+      
+      const transactions: TransactionInfo[] = await Promise.all(
+        signatures.map(async (sig) => {
+          try {
+            const tx = await connection.getParsedTransaction(sig.signature);
+            return {
+              signature: sig.signature,
+              slot: sig.slot,
+              blockTime: sig.blockTime,
+              fee: tx?.meta?.fee || 0,
+              status: tx?.meta?.err ? 'failed' : 'success',
+            };
+          } catch {
+            return {
+              signature: sig.signature,
+              slot: sig.slot,
+              blockTime: sig.blockTime,
+              fee: 0,
+              status: 'success' as const,
+            };
+          }
+        })
+      );
+      
+      setTransactionHistory(transactions);
+    } catch (err) {
+      console.error('Error fetching transaction history:', err);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  // Export account data
+  const exportAccountData = (format: 'json' | 'csv') => {
+    if (!accountData) return;
+    
+    const exportData = {
+      address: accountId,
+      network,
+      timestamp: new Date().toISOString(),
+      type: accountData.type,
+      owner: accountData.owner,
+      lamports: accountData.lamports,
+      solBalance: (accountData.lamports / 1e9).toFixed(9),
+      executable: accountData.executable,
+      rentEpoch: accountData.rentEpoch,
+      rentExempt: accountData.rentExempt,
+      rentExemptMinimum: accountData.rentExemptMinimum,
+      data: accountData.data,
+      rawDataSize: accountData.rawData.length,
+    };
+
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `account-${accountId.slice(0, 8)}-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // CSV format (simplified)
+      const csv = `Address,Network,Type,Owner,SOL Balance,Lamports,Executable,Rent Exempt,Data Size\n${accountId},${network},${accountData.type},${accountData.owner},${(accountData.lamports / 1e9).toFixed(9)},${accountData.lamports},${accountData.executable},${accountData.rentExempt},${accountData.rawData.length}`;
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `account-${accountId.slice(0, 8)}-${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // Add to search history
+  const addToSearchHistory = (address: string) => {
+    if (!address || !isValidSolanaAddress(address)) return;
+    setSearchHistory((prev) => {
+      const filtered = prev.filter((addr) => addr !== address);
+      return [address, ...filtered].slice(0, 10); // Keep last 10
+    });
+  };
+
+  // Load search history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('accountInspectorHistory');
+    if (saved) {
+      try {
+        setSearchHistory(JSON.parse(saved));
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }, []);
+
+  // Save search history to localStorage
+  useEffect(() => {
+    if (searchHistory.length > 0) {
+      localStorage.setItem('accountInspectorHistory', JSON.stringify(searchHistory));
+    }
+  }, [searchHistory]);
+
+  // Fetch transaction history when account data is loaded
+  useEffect(() => {
+    if (accountData && accountId) {
+      fetchTransactionHistory(accountId);
+      addToSearchHistory(accountId);
+    }
+  }, [accountData, accountId]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!autoRefresh || !accountId || !connection) return;
+    
+    const interval = setInterval(() => {
+      if (accountId) {
+        handleSearch();
+      }
+    }, 10000); // Refresh every 10 seconds
+    
+    return () => clearInterval(interval);
+  }, [autoRefresh, accountId, connection]);
 
   // Example addresses for testing
   const exampleAddresses: Record<string, string[]> = {
