@@ -54,14 +54,17 @@ export function RevenueLanding({ onBack, onNavigateToPresale, onNavigateToPremiu
       name: 'Free',
       price: '$0',
       period: 'forever',
-      description: 'Perfect for trying out Sea Level Studio',
+      description: 'Perfect for trying out Sea Level Studio and learning Solana development',
       features: [
-        'Account Inspector',
-        '10 Transaction Builder Trials',
-        'Community Support',
-        'Basic Analytics',
-        'Access to Free Tools',
-        'Limited Feature Access',
+        'Account Inspector - Inspect any Solana account (wallets, tokens, programs) and see parsed data in human-readable format. Essential for debugging and understanding on-chain state.',
+        '10 Transaction Builder Trials - Build and simulate up to 10 transactions to learn how Solana transactions work. See exactly what your transaction does before sending.',
+        'Transaction Simulator - Fork the chain and see before/after state changes. Understand how your transaction mutates accounts without risking real funds.',
+        'Basic Arbitrage Scanner - Scan 50 opportunities across Raydium, Orca, Jupiter, Meteora, and Lifinity. Find price differences between DEXs.',
+        'AI Agent Queries (100) - Get help from AI agents for transaction building, code suggestions, and Solana development questions.',
+        'Code Export (20) - Export your perfect transactions as copy-paste-ready TypeScript or Rust code for your dApp.',
+        'Community Support - Access to community forums and documentation',
+        'Devnet Faucet - Get free test SOL for development and testing',
+        'Basic Analytics - View your transaction history and usage stats',
       ],
       cta: 'Get Started Free',
       paymentMethods: [],
@@ -71,16 +74,21 @@ export function RevenueLanding({ onBack, onNavigateToPresale, onNavigateToPremiu
       name: 'Chad Tier',
       price: '$20',
       period: 'month',
-      description: 'For builders who want transaction tools',
+      description: 'For builders who want unlimited transaction tools and DeFi operations',
       features: [
-        'Everything in Free',
-        'Unlimited Transaction Builder',
-        'Account Inspector',
-        'Basic Analytics Dashboard',
-        'Transaction History Export',
-        'Community Support',
-        'Basic API Access',
-        'Transaction Templates',
+        'Everything in Free Tier',
+        'Unlimited Transaction Builder - Build as many transactions as you need. No limits on testing, simulating, or deploying.',
+        'Unlimited Account Inspector - Inspect unlimited accounts to debug issues, verify state, and understand program data structures.',
+        'Unlimited Transaction Simulator - Test complex multi-instruction transactions without risk. See state changes for every account.',
+        'Unlimited Code Export - Export unlimited transactions as production-ready code for your dApps and smart contracts.',
+        'Advanced Transaction Builder - Build complex transactions with multiple instructions, CPIs (Cross-Program Invocations), and custom programs.',
+        'Transaction Templates - Save and reuse common transaction patterns. Speed up development with pre-built templates.',
+        'Transaction History Export - Export your transaction history as CSV or JSON for accounting, analytics, or compliance.',
+        'Basic Analytics Dashboard - Track your transaction usage, success rates, and costs. Monitor your development activity.',
+        'Basic API Access - Integrate Sealevel Studio into your workflow with REST API access for transaction building and simulation.',
+        'Multi-Instruction Support - Build transactions with multiple instructions in sequence (e.g., create account + transfer + mint tokens).',
+        'Token-2022 Support - Full support for Token-2022 extensions including transfer fees, hooks, confidential transfers, and more.',
+        'Community Support - Priority access to community forums and faster response times',
       ],
       cta: 'Subscribe to Chad Tier',
       popular: true,
@@ -93,18 +101,22 @@ export function RevenueLanding({ onBack, onNavigateToPresale, onNavigateToPremiu
       name: 'Dev Tier',
       price: '$75',
       period: 'month',
-      description: 'For serious Solana developers building dApps',
+      description: 'For serious Solana developers building production dApps and DeFi protocols',
       features: [
         'Everything in Chad Tier',
-        'AI Cyber Playground Access',
-        'Premium Support (24hr response)',
-        'Priority Feature Requests',
-        'Advanced Analytics Dashboard',
-        'Full API Access',
-        'Custom Webhooks',
-        'Advanced Security Scanner',
-        'Transaction Bundler',
-        'Multi-wallet Management',
+        'AI Cyber Playground Access - Advanced AI agents for trading strategies, security auditing, blockchain analysis, and gaming management. 23 specialized AI agents at your disposal.',
+        'Transaction Bundler - Multi-send SOL to up to 50 wallets in one transaction. Auto-create accounts automatically. Perfect for airdrops, payroll, and batch operations. (500 SEAL per transaction)',
+        'Advanced Security Scanner - AI-powered vulnerability detection for your transactions. Identifies security risks, constraint violations, and potential exploits before deployment.',
+        'Multi-Wallet Management - Manage multiple wallets, import/export keys, organize with labels and tags. Track balances across all your wallets.',
+        'Full API Access - Complete REST API with authentication. Build Sealevel Studio into your CI/CD pipeline, automated trading systems, or custom tools.',
+        'Custom Webhooks - Get real-time notifications for transaction confirmations, arbitrage opportunities, account changes, and more.',
+        'Advanced Analytics Dashboard - Deep insights into your transaction patterns, success rates, gas costs, and usage trends. Export data for analysis.',
+        'Priority Feature Requests - Your feature requests get prioritized. Help shape the future of Sealevel Studio.',
+        'Premium Support (24hr response) - Direct access to the development team. Get help with complex issues and integration questions.',
+        'Flash Loan Simulator - Test flash loan strategies without risk. Perfect for developing arbitrage bots and DeFi strategies.',
+        'Jito Bundle Integration - Submit atomic transaction bundles to Jito Block Engine for MEV protection and guaranteed execution.',
+        'Advanced Pathfinding - Multi-hop arbitrage pathfinding with dynamic slippage modeling. Find optimal routes across multiple DEXs.',
+        'Signal Monitoring - Real-time alerts for new pool creation, large swaps, LSD de-pegging, and other on-chain events.',
       ],
       cta: 'Subscribe to Dev Tier',
       paymentMethods: ['card', 'crypto', 'seal'],
@@ -114,21 +126,25 @@ export function RevenueLanding({ onBack, onNavigateToPresale, onNavigateToPremiu
       name: 'DEGEN Tier',
       price: '$200',
       period: 'month',
-      description: 'For power users, traders, and MEV searchers',
+      description: 'For power users, professional traders, MEV searchers, and DeFi protocols',
       features: [
         'Everything in Dev Tier',
-        'Market Maker Tools',
-        'MEV Tools & Jito Integration',
-        'Unlimited Arbitrage Scanner',
-        'Priority MEV Bundle Submission',
-        'Real-time Arbitrage Alerts',
-        'Advanced Trading Tools',
-        'Flash Loan Simulator',
-        'Custom Bot Integration',
-        'Dedicated Support (12hr response)',
-        'Early Access to New Features',
-        'Advanced Portfolio Analytics',
-        'Enterprise-grade Security',
+        'Market Maker Agent - Autonomous on-chain trading agent with customizable strategies. Grid trading, TWAP execution, real-time analytics. Own wallet with AI-driven trading decisions. (2,000 SEAL setup + 5,000 SEAL/month)',
+        'Unlimited Arbitrage Scanner - No limits on scanning. Real-time WebSocket subscriptions for instant opportunity detection across all DEXs.',
+        'Priority MEV Bundle Submission - Your bundles get priority in Jito Block Engine. Higher success rate for atomic arbitrage execution.',
+        'Real-time Arbitrage Alerts - WebSocket-based alerts for profitable opportunities. Get notified instantly when arbitrage appears.',
+        'Advanced MEV Tools - Front-running, back-running, sandwich attack protection. Protected arbitrage with user MEV sharing.',
+        'Flash Loan Integration - Zero-capital arbitrage with Kamino flash loans. Borrow → Execute → Repay in one atomic transaction.',
+        'Advanced Trading Tools - Portfolio optimization, risk assessment, position management. AI-powered trading strategies.',
+        'Custom Bot Integration - Full API access for building custom trading bots, arbitrage systems, and automated strategies.',
+        'Advertising Bots - Telegram and Twitter/X bots for token promotion. Automated posting, scheduling, message templating. (1,000-1,500 SEAL setup)',
+        'Dedicated Support (12hr response) - Direct line to the development team. Priority support for critical issues.',
+        'Early Access to New Features - Be the first to test new tools, strategies, and integrations before public release.',
+        'Advanced Portfolio Analytics - Track P&L, ROI, risk metrics, and performance across all your trading activities.',
+        'Enterprise-grade Security - Enhanced security scanning, audit reports, and compliance tools for institutional use.',
+        'Multi-RPC Broadcasting - Submit bundles to multiple Jito endpoints for redundancy and higher success rates.',
+        'Signal Monitoring Pro - Advanced monitoring for new pools, LSD de-pegging, large swaps, and oracle updates.',
+        'Custom Strategy Development - Work with the team to develop custom trading strategies and integrations.',
       ],
       cta: 'Subscribe to DEGEN Tier',
       paymentMethods: ['card', 'crypto', 'seal'],
@@ -342,7 +358,7 @@ export function RevenueLanding({ onBack, onNavigateToPresale, onNavigateToPremiu
                     </div>
                   )}
 
-                  <ul className="space-y-3.5 mb-8 min-h-[300px]">
+                  <ul className="space-y-3.5 mb-8 min-h-[400px]">
                     {tier.features.map((feature, index) => (
                       <li key={index} className="flex items-start gap-3">
                         <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
@@ -488,6 +504,158 @@ export function RevenueLanding({ onBack, onNavigateToPresale, onNavigateToPremiu
           </div>
         </div>
 
+        {/* Why You Need These Tools */}
+        <div className="mb-20">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-center bg-gradient-to-r from-purple-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
+            Why You Need These Tools
+          </h2>
+          <p className="text-xl text-gray-300 text-center mb-12 max-w-3xl mx-auto">
+            Solana development is complex. These tools solve real problems that every developer, trader, and protocol faces.
+          </p>
+
+          <div className="space-y-8 max-w-5xl mx-auto">
+            {/* Problem 1: Transaction Building */}
+            <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-700/50">
+              <div className="flex items-start gap-5">
+                <div className="p-3 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl border border-purple-500/30 flex-shrink-0">
+                  <Code className="w-6 h-6 text-purple-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-3 text-white">The Transaction Building Problem</h3>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">The Problem:</strong> Solana's account-based model makes transaction building a nightmare. You need to manually figure out which accounts are required, in what order, which are mutable, which are signers, and handle complex CPIs (Cross-Program Invocations).
+                  </p>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">How We Solve It:</strong> Our Transaction Builder is a visual WYSIWYG editor. Select a program, choose an instruction, and fill in the required accounts. The tool validates everything before you send. No more guessing what accounts you need.
+                  </p>
+                  <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50">
+                    <p className="text-sm text-gray-300 mb-2"><strong className="text-white">Use Cases:</strong></p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-300 ml-4">
+                      <li>Building token transfers, swaps, and DeFi operations</li>
+                      <li>Creating complex multi-instruction transactions</li>
+                      <li>Learning Solana development without trial-and-error</li>
+                      <li>Prototyping dApp features before writing production code</li>
+                      <li>Debugging failed transactions by rebuilding them step-by-step</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Problem 2: State Verification */}
+            <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-700/50">
+              <div className="flex items-start gap-5">
+                <div className="p-3 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl border border-blue-500/30 flex-shrink-0">
+                  <Brain className="w-6 h-6 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-3 text-white">The "Black Box" Problem</h3>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">The Problem:</strong> Transactions fail with cryptic errors like "0x1 (InvalidAccountData)" or "ConstraintHasOne". You have no idea what your transaction actually does to on-chain state until you send it and hope for the best.
+                  </p>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">How We Solve It:</strong> Our Transaction Simulator forks the chain and shows you a clear "before-and-after" state diff. See exactly how your transaction mutates every account, compute units used, and console logs - all without risking real funds.
+                  </p>
+                  <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50">
+                    <p className="text-sm text-gray-300 mb-2"><strong className="text-white">Use Cases:</strong></p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-300 ml-4">
+                      <li>Testing complex transactions before mainnet deployment</li>
+                      <li>Understanding how DeFi protocols modify account state</li>
+                      <li>Debugging why transactions fail by seeing state changes</li>
+                      <li>Learning Solana's account model through visualization</li>
+                      <li>Verifying token transfers, swaps, and program interactions</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Problem 3: Arbitrage Opportunities */}
+            <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-700/50">
+              <div className="flex items-start gap-5">
+                <div className="p-3 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30 flex-shrink-0">
+                  <TrendingUp className="w-6 h-6 text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-3 text-white">The Arbitrage Opportunity Problem</h3>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">The Problem:</strong> Price differences exist across DEXs (Raydium, Orca, Jupiter, etc.), but finding profitable opportunities manually is impossible. You need to monitor multiple DEXs in real-time, calculate paths, account for slippage, and execute fast.
+                  </p>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">How We Solve It:</strong> Our Arbitrage Scanner monitors all major DEXs in real-time via WebSocket. It finds profitable opportunities, calculates optimal paths using modified Dijkstra algorithm, accounts for slippage and fees, and lets you execute with one click. Advanced tiers include Jito bundles for atomic execution and flash loans for zero-capital arbitrage.
+                  </p>
+                  <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50">
+                    <p className="text-sm text-gray-300 mb-2"><strong className="text-white">Use Cases:</strong></p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-300 ml-4">
+                      <li>Finding profitable trades across multiple DEXs automatically</li>
+                      <li>Building automated arbitrage bots and trading systems</li>
+                      <li>MEV (Maximal Extractable Value) extraction for searchers</li>
+                      <li>Market making and liquidity provision strategies</li>
+                      <li>Flash loan arbitrage for zero-capital trading</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Problem 4: Account Inspection */}
+            <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-700/50">
+              <div className="flex items-start gap-5">
+                <div className="p-3 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-xl border border-orange-500/30 flex-shrink-0">
+                  <Shield className="w-6 h-6 text-orange-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-3 text-white">The Account Inspection Problem</h3>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">The Problem:</strong> On-chain account data is raw bytes. You need to know the program IDL, understand the data structure, and manually deserialize to see what's actually stored. This makes debugging and verification extremely difficult.
+                  </p>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">How We Solve It:</strong> Our Account Inspector fetches any account, automatically deserializes it using program IDLs (Anchor, Metaplex, etc.), and displays human-readable data. See token balances, program state, account ownership, and more - instantly.
+                  </p>
+                  <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50">
+                    <p className="text-sm text-gray-300 mb-2"><strong className="text-white">Use Cases:</strong></p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-300 ml-4">
+                      <li>Verifying token balances and account ownership</li>
+                      <li>Debugging failed transactions by inspecting account state</li>
+                      <li>Understanding how DeFi protocols store data</li>
+                      <li>Auditing smart contracts and program accounts</li>
+                      <li>Learning Solana's account model through real examples</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Problem 5: Code Generation */}
+            <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-700/50">
+              <div className="flex items-start gap-5">
+                <div className="p-3 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl border border-indigo-500/30 flex-shrink-0">
+                  <Sparkles className="w-6 h-6 text-indigo-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-3 text-white">The Code Generation Problem</h3>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">The Problem:</strong> Once you've built the perfect transaction in a GUI, you need to convert it to code for your dApp. This means manually translating the visual transaction into TypeScript or Rust, which is error-prone and time-consuming.
+                  </p>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    <strong className="text-white">How We Solve It:</strong> Our Code Exporter generates production-ready TypeScript or Rust code from your perfected transaction. Copy-paste directly into your dApp, integration tests, or smart contracts. No manual translation needed.
+                  </p>
+                  <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50">
+                    <p className="text-sm text-gray-300 mb-2"><strong className="text-white">Use Cases:</strong></p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-300 ml-4">
+                      <li>Prototyping in GUI, then exporting to production code</li>
+                      <li>Generating integration test code for your dApp</li>
+                      <li>Creating code examples and documentation</li>
+                      <li>Learning Solana SDK patterns through generated code</li>
+                      <li>Rapid development: build visually, deploy programmatically</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Feature Highlights */}
         <div className="mb-20">
           <h2 className="text-4xl md:text-5xl font-bold mb-16 text-center bg-gradient-to-r from-purple-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
@@ -498,17 +666,17 @@ export function RevenueLanding({ onBack, onNavigateToPresale, onNavigateToPremiu
               {
                 icon: <Brain className="w-10 h-10" />,
                 title: 'AI-Powered',
-                description: 'Advanced AI agents help you build, optimize, and execute transactions with confidence.',
+                description: '23 specialized AI agents help you build, optimize, and execute transactions with confidence. From trading strategies to security auditing.',
               },
               {
                 icon: <Shield className="w-10 h-10" />,
                 title: 'Secure by Default',
-                description: 'Built-in security scanning and vulnerability detection keep your transactions safe.',
+                description: 'Built-in security scanning and vulnerability detection keep your transactions safe. Simulate before sending to avoid costly mistakes.',
               },
               {
                 icon: <TrendingUp className="w-10 h-10" />,
                 title: 'Profit Opportunities',
-                description: 'Real-time arbitrage scanner finds profitable opportunities across all DEXs.',
+                description: 'Real-time arbitrage scanner finds profitable opportunities across all DEXs. MEV tools for professional traders and searchers.',
               },
             ].map((feature, index) => (
               <div 
