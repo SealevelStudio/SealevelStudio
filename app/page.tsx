@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getMint } from '@solana/spl-token';
-import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck, Lock, Shield, Bot, Book, BarChart3, Brain, DollarSign, Coins, Droplet, Twitter, LineChart, MessageCircle, Layers, ArrowLeft, Rocket } from 'lucide-react';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getMint } from '@solana/spl-token';
+import { Search, Wrench, Play, Code, Wallet, ChevronDown, Copy, ExternalLink, AlertCircle, CheckCircle, Zap, Terminal, TrendingUp, ShieldCheck, Lock, Shield, Bot, Book, BarChart3, Brain, DollarSign, Coins, Droplet, Twitter, LineChart, MessageCircle, Layers, ArrowLeft, Rocket, History, Download, Star, RefreshCw, Eye, EyeOff, FileJson, FileText } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WalletButton from './components/WalletButton';
 import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilder';
@@ -98,12 +98,17 @@ const DEFAULT_NETWORK = (process.env.NEXT_PUBLIC_SOLANA_NETWORK as keyof typeof 
 
 // Types for our account data
 interface ParsedAccountData {
-  type: 'system' | 'token' | 'program' | 'unknown';
+  type: 'system' | 'token' | 'token-2022' | 'program' | 'mint' | 'metadata' | 'unknown';
   owner: string;
   data: any;
   rawData: Buffer;
   lamports: number;
   executable: boolean;
+  rentEpoch?: number;
+  rentExempt?: boolean;
+  rentExemptMinimum?: number;
+  metadata?: any;
+  relatedAccounts?: RelatedAccount[];
 }
 
 interface TokenAccountData {
@@ -115,6 +120,34 @@ interface TokenAccountData {
   delegate?: string;
   delegatedAmount?: string;
   closeAuthority?: string;
+  mintAuthority?: string;
+  supply?: string;
+  isInitialized?: boolean;
+  tokenProgram?: 'spl-token' | 'token-2022';
+}
+
+interface RelatedAccount {
+  address: string;
+  relationship: string;
+  type: string;
+}
+
+interface TransactionInfo {
+  signature: string;
+  slot: number;
+  blockTime: number | null;
+  fee: number;
+  status: 'success' | 'failed';
+}
+
+// Calculate rent exemption minimum
+function calculateRentExemptMinimum(dataLength: number): number {
+  // Rent exemption formula: account_size + 128 bytes overhead
+  const accountSize = dataLength;
+  const overhead = 128;
+  const rentPerByteYear = 0.00000348; // SOL per byte per year (approximate)
+  const rentExemptMinimum = Math.ceil((accountSize + overhead) * rentPerByteYear * 2); // 2 years worth
+  return rentExemptMinimum * 1e9; // Convert to lamports
 }
 
 // Account parsing functions (moved before AccountInspectorView)
@@ -124,6 +157,8 @@ async function parseAccountData(
   accountInfo: AccountInfo<Buffer>
 ): Promise<ParsedAccountData> {
   const owner = accountInfo.owner.toString();
+  const rentExemptMinimum = calculateRentExemptMinimum(accountInfo.data.length);
+  const rentExempt = accountInfo.lamports >= rentExemptMinimum;
 
   // Check if it's a System Program account
   if (owner === '11111111111111111111111111111112') {
@@ -134,10 +169,85 @@ async function parseAccountData(
       rawData: accountInfo.data,
       lamports: accountInfo.lamports,
       executable: accountInfo.executable,
+      rentEpoch: accountInfo.rentEpoch,
+      rentExempt,
+      rentExemptMinimum,
     };
   }
 
-  // Check if it's a Token Program account
+  // Check if it's a Token-2022 Program account
+  if (owner === TOKEN_2022_PROGRAM_ID.toString()) {
+    try {
+      const tokenAccount = await getAccount(connection, publicKey, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      const mint = await getMint(connection, tokenAccount.mint, 'confirmed', TOKEN_2022_PROGRAM_ID);
+
+      const tokenData: TokenAccountData = {
+        mint: tokenAccount.mint.toString(),
+        owner: tokenAccount.owner.toString(),
+        amount: tokenAccount.amount.toString(),
+        decimals: mint.decimals,
+        uiAmount: Number(tokenAccount.amount) / Math.pow(10, mint.decimals),
+        delegate: tokenAccount.delegate?.toString(),
+        delegatedAmount: tokenAccount.delegatedAmount?.toString(),
+        closeAuthority: tokenAccount.closeAuthority?.toString(),
+        tokenProgram: 'token-2022',
+        isInitialized: true,
+      };
+
+      const relatedAccounts: RelatedAccount[] = [
+        { address: tokenAccount.mint.toString(), relationship: 'Mint', type: 'mint' },
+        { address: tokenAccount.owner.toString(), relationship: 'Owner', type: 'wallet' },
+      ];
+
+      if (tokenAccount.delegate) {
+        relatedAccounts.push({
+          address: tokenAccount.delegate.toString(),
+          relationship: 'Delegate',
+          type: 'wallet',
+        });
+      }
+
+      return {
+        type: 'token-2022',
+        owner,
+        data: tokenData,
+        rawData: accountInfo.data,
+        lamports: accountInfo.lamports,
+        executable: accountInfo.executable,
+        rentEpoch: accountInfo.rentEpoch,
+        rentExempt,
+        rentExemptMinimum,
+        relatedAccounts,
+      };
+    } catch (error) {
+      // Try to check if it's a mint instead
+      try {
+        const mint = await getMint(connection, publicKey, 'confirmed', TOKEN_2022_PROGRAM_ID);
+        return {
+          type: 'mint',
+          owner,
+          data: {
+            decimals: mint.decimals,
+            mintAuthority: mint.mintAuthority?.toString(),
+            supply: mint.supply.toString(),
+            uiSupply: Number(mint.supply) / Math.pow(10, mint.decimals),
+            isInitialized: mint.mintAuthority !== null,
+            tokenProgram: 'token-2022',
+          },
+          rawData: accountInfo.data,
+          lamports: accountInfo.lamports,
+          executable: accountInfo.executable,
+          rentEpoch: accountInfo.rentEpoch,
+          rentExempt,
+          rentExemptMinimum,
+        };
+      } catch (mintError) {
+        console.warn('Failed to parse as Token-2022 account:', error);
+      }
+    }
+  }
+
+  // Check if it's a standard Token Program account
   if (owner === TOKEN_PROGRAM_ID.toString()) {
     try {
       const tokenAccount = await getAccount(connection, publicKey);
@@ -152,7 +262,22 @@ async function parseAccountData(
         delegate: tokenAccount.delegate?.toString(),
         delegatedAmount: tokenAccount.delegatedAmount?.toString(),
         closeAuthority: tokenAccount.closeAuthority?.toString(),
+        tokenProgram: 'spl-token',
+        isInitialized: true,
       };
+
+      const relatedAccounts: RelatedAccount[] = [
+        { address: tokenAccount.mint.toString(), relationship: 'Mint', type: 'mint' },
+        { address: tokenAccount.owner.toString(), relationship: 'Owner', type: 'wallet' },
+      ];
+
+      if (tokenAccount.delegate) {
+        relatedAccounts.push({
+          address: tokenAccount.delegate.toString(),
+          relationship: 'Delegate',
+          type: 'wallet',
+        });
+      }
 
       return {
         type: 'token',
@@ -161,10 +286,36 @@ async function parseAccountData(
         rawData: accountInfo.data,
         lamports: accountInfo.lamports,
         executable: accountInfo.executable,
+        rentEpoch: accountInfo.rentEpoch,
+        rentExempt,
+        rentExemptMinimum,
+        relatedAccounts,
       };
     } catch (error) {
-      // If token parsing fails, return as unknown
-      console.warn('Failed to parse as token account:', error);
+      // Try to check if it's a mint instead
+      try {
+        const mint = await getMint(connection, publicKey);
+        return {
+          type: 'mint',
+          owner,
+          data: {
+            decimals: mint.decimals,
+            mintAuthority: mint.mintAuthority?.toString(),
+            supply: mint.supply.toString(),
+            uiSupply: Number(mint.supply) / Math.pow(10, mint.decimals),
+            isInitialized: mint.mintAuthority !== null,
+            tokenProgram: 'spl-token',
+          },
+          rawData: accountInfo.data,
+          lamports: accountInfo.lamports,
+          executable: accountInfo.executable,
+          rentEpoch: accountInfo.rentEpoch,
+          rentExempt,
+          rentExemptMinimum,
+        };
+      } catch (mintError) {
+        console.warn('Failed to parse as token account:', error);
+      }
     }
   }
 
@@ -176,10 +327,14 @@ async function parseAccountData(
       data: {
         executable: true,
         programData: accountInfo.data.length > 0 ? 'Has program data' : 'No program data',
+        programSize: accountInfo.data.length,
       },
       rawData: accountInfo.data,
       lamports: accountInfo.lamports,
       executable: accountInfo.executable,
+      rentEpoch: accountInfo.rentEpoch,
+      rentExempt,
+      rentExemptMinimum,
     };
   }
 
@@ -191,6 +346,9 @@ async function parseAccountData(
     rawData: accountInfo.data,
     lamports: accountInfo.lamports,
     executable: accountInfo.executable,
+    rentEpoch: accountInfo.rentEpoch,
+    rentExempt,
+    rentExemptMinimum,
   };
 }
 
