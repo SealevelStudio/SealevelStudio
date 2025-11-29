@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useUser } from '../contexts/UserContext';
 
 interface SocialFeaturesProps {
   onBack?: () => void;
@@ -53,6 +54,7 @@ interface PublicProfile {
 
 export function SocialFeatures({ onBack }: SocialFeaturesProps) {
   const { publicKey } = useWallet();
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState<'share' | 'profile' | 'marketplace' | 'community'>('share');
   const [templates, setTemplates] = useState<TransactionTemplate[]>([]);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -256,14 +258,14 @@ export function SocialFeatures({ onBack }: SocialFeaturesProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-2xl font-bold">
-                      {publicKey ? `${publicKey.toString().slice(0, 8)}...${publicKey.toString().slice(-8)}` : 'Not Connected'}
+                      {(publicKey?.toString() || user?.walletAddress) ? `${(publicKey?.toString() || user?.walletAddress || '').slice(0, 8)}...${(publicKey?.toString() || user?.walletAddress || '').slice(-8)}` : 'Generate Wallet'}
                     </h2>
-                    {publicKey && (
+                    {(publicKey || user?.walletAddress) && (
                       <button
-                        onClick={() => copyToClipboard(publicKey.toString())}
+                        onClick={() => copyToClipboard((publicKey?.toString() || user?.walletAddress || ''))}
                         className="p-1 text-gray-400 hover:text-white"
                       >
-                        {copiedLink === publicKey.toString() ? (
+                        {copiedLink === (publicKey?.toString() || user?.walletAddress || '') ? (
                           <CheckCircle size={16} className="text-green-400" />
                         ) : (
                           <Copy size={16} />
