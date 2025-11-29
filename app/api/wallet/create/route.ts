@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Keypair } from '@solana/web3.js';
 import crypto from 'crypto';
-import { storeWalletEmailMapping } from '@/app/lib/wallet-recovery/database-store';
+import { storeWalletEmailMapping, getWalletByEmail } from '@/app/lib/wallet-recovery/database-store';
 import { createEmailVerificationToken, isEmailVerified } from '@/app/lib/wallet-recovery/email-verification';
 import { checkConnection } from '@/app/lib/database/connection';
 import { encryptWalletKey } from '@/app/lib/wallet-recovery/encryption';
@@ -34,6 +34,41 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const { userId, sessionId, email, skipEmailVerification, vanityPrefix } = body;
+
+    // Check if wallet already exists for email or session
+    if (email) {
+      const normalizedEmail = email.toLowerCase().trim();
+      const dbAvailable = await checkConnection();
+      
+      if (dbAvailable) {
+        const existingWallet = await getWalletByEmail(normalizedEmail);
+        if (existingWallet) {
+          // Return existing wallet
+          return NextResponse.json({
+            success: true,
+            wallet: {
+              address: existingWallet.walletAddress,
+              walletId: existingWallet.walletId,
+              createdAt: existingWallet.createdAt.toISOString(),
+            },
+            emailLinked: existingWallet.emailVerified,
+            message: 'Using existing wallet linked to your email.',
+          });
+        }
+      }
+    }
+
+    // Check for existing wallet in session cookie
+    const sessionWalletId = request.cookies.get('wallet_session')?.value;
+    if (sessionWalletId && !email) {
+      // Try to get wallet info from cookie
+      const walletCookie = request.cookies.get(`wallet_${sessionWalletId}`);
+      if (walletCookie) {
+        // Wallet exists in session, return it (we'd need to decode to get address)
+        // For now, we'll create a new one if no email provided
+        // In production, you'd want to store wallet address in a separate cookie or DB
+      }
+    }
 
     // Generate a unique identifier for this wallet
     const walletId = userId || sessionId || crypto.randomBytes(16).toString('hex');
