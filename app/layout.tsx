@@ -53,8 +53,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
-        {/* Preload landing page video for instant playback */}
-        <link rel="preload" href="/gemini_generated_video_EBF488F6.MP4" as="video" type="video/mp4" />
+        {/* Video preload handled by video element in LandingPage component */}
       </head>
       <body className={`${inter.className} bg-gray-900 text-gray-100 antialiased`} suppressHydrationWarning>
         <ChunkErrorHandler />

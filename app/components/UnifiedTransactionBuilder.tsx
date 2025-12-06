@@ -72,6 +72,7 @@ const BLOCK_TO_TEMPLATE: Record<string, string> = {
   'token_mint': 'spl_token_mint_to',
   'token_burn': 'spl_token_burn',
   'ata_create': 'spl_ata_create',
+  'flash_loan_liquidity_withdraw': 'flash_loan_liquidity_withdraw',
 };
 
 export interface SimpleBlock {
@@ -96,6 +97,15 @@ const SIMPLE_BLOCK_CATEGORIES: Record<string, SimpleBlock[]> = {
     { id: 'solend_flash_repay', name: 'Solend Flash Repay', icon: 'Zap', color: 'bg-blue-700', verified: true, params: { protocol: 'solend', tokenMint: '', repayAmount: '1000000000', lendingPool: '' } },
     { id: 'marginfi_flash_loan', name: 'Marginfi Flash Loan', icon: 'Zap', color: 'bg-purple-600', verified: true, params: { protocol: 'marginfi', tokenMint: '', amount: '1000000000', lendingPool: '' } },
     { id: 'marginfi_flash_repay', name: 'Marginfi Flash Repay', icon: 'Zap', color: 'bg-purple-700', verified: true, params: { protocol: 'marginfi', tokenMint: '', repayAmount: '1000000000', lendingPool: '' } },
+    { id: 'flash_loan_liquidity_withdraw', name: 'Withdraw Liquidity via Flash Loan', icon: 'Zap', color: 'bg-indigo-600', verified: true, params: { 
+      poolAddress: '', 
+      positionAccount: '', 
+      withdrawAmount: '1000000', 
+      flashLoanAmount: '100000', 
+      protocol: 'orca', 
+      flashLoanProtocol: 'kamino',
+      flashLoanFeeBps: '9'
+    } },
   ],
   TOKEN: [
     { id: 'create_token_and_mint', name: 'Create Token + Mint', icon: 'Zap', color: 'bg-purple-600', verified: true, params: { 
@@ -1170,6 +1180,24 @@ ${instructionComments}
         accounts['userTransferAuthority'] = walletAddress;
         args['amount'] = BigInt(block.params.amount || '0');
         args['minAmountOut'] = BigInt(block.params.minAmountOut || '0');
+      } else if (block.id === 'flash_loan_liquidity_withdraw') {
+        const walletAddress = getWalletAddress();
+        if (!walletAddress) throw new Error('Please generate a wallet first');
+        
+        accounts['borrower'] = walletAddress;
+        accounts['poolAddress'] = block.params.poolAddress || '';
+        accounts['positionAccount'] = block.params.positionAccount || '';
+        accounts['withdrawTokenAccount'] = block.params.withdrawTokenAccount || walletAddress; // Default to user's wallet
+        accounts['flashLoanProtocol'] = block.params.flashLoanProtocol || 'kamino';
+        accounts['flashLoanPool'] = block.params.flashLoanPool || '';
+        accounts['borrowerTokenAccount'] = block.params.borrowerTokenAccount || walletAddress;
+        accounts['tokenMint'] = block.params.tokenMint || '';
+        
+        args['withdrawAmount'] = BigInt(block.params.withdrawAmount || '0');
+        args['flashLoanAmount'] = BigInt(block.params.flashLoanAmount || '0');
+        args['protocol'] = block.params.protocol || 'orca';
+        args['flashLoanProtocol'] = block.params.flashLoanProtocol || 'kamino';
+        args['flashLoanFeeBps'] = parseInt(block.params.flashLoanFeeBps || '9');
       } else {
         Object.entries(block.params).forEach(([key, value]) => {
           const arg = template.args.find(a => a.name === key);

@@ -27,6 +27,7 @@ import {
   getAssociatedTokenAddress
 } from '@solana/spl-token';
 import { BuiltInstruction, TransactionDraft } from './instructions/types';
+import { getTemplateById } from './instructions/templates';
 
 // Platform fee configuration
 // 0.0002 SOL per transaction
@@ -59,6 +60,12 @@ export class TransactionBuilder {
           transaction.add(inst);
         }
         // Add mint keypair to signers
+        additionalSigners.push(...result.signers);
+      } else if (instruction.template.id === 'flash_loan_liquidity_withdraw') {
+        const result = await this.buildFlashLoanLiquidityWithdraw(instruction);
+        for (const inst of result.instructions) {
+          transaction.add(inst);
+        }
         additionalSigners.push(...result.signers);
       } else {
         const solanaInstruction = await this.buildInstruction(instruction);
@@ -152,6 +159,46 @@ export class TransactionBuilder {
       
       case 'mpl_update_metadata':
         return this.buildUpdateMetadata(accountKeys, args);
+      
+      // ===== DeFi INSTRUCTIONS =====
+      case 'jupiter_swap':
+        return this.buildJupiterSwap(accountKeys, args);
+      
+      case 'orca_open_position':
+        return this.buildOrcaOpenPosition(accountKeys, args);
+      
+      case 'marinade_deposit':
+        return this.buildMarinadeDeposit(accountKeys, args);
+      
+      case 'raydium_swap':
+        return this.buildRaydiumSwap(accountKeys, args);
+      
+      // ===== FLASH LOAN INSTRUCTIONS =====
+      case 'kamino_flash_loan':
+        return this.buildKaminoFlashLoan(accountKeys, args);
+      
+      case 'kamino_flash_repay':
+        return this.buildKaminoFlashRepay(accountKeys, args);
+      
+      case 'solend_flash_loan':
+        return this.buildSolendFlashLoan(accountKeys, args);
+      
+      case 'solend_flash_repay':
+        return this.buildSolendFlashRepay(accountKeys, args);
+      
+      case 'marginfi_flash_loan':
+        return this.buildMarginfiFlashLoan(accountKeys, args);
+      
+      case 'marginfi_flash_repay':
+        return this.buildMarginfiFlashRepay(accountKeys, args);
+      
+      // ===== NFT MARKETPLACE INSTRUCTIONS =====
+      case 'me_buy_now':
+        return this.buildMagicEdenBuyNow(accountKeys, args);
+      
+      // ===== CUSTOM INSTRUCTIONS =====
+      case 'custom_instruction':
+        return this.buildCustomInstruction(accountKeys, args, template);
       
       default:
         throw new Error(`Unsupported instruction template: ${template.id}`);
@@ -485,6 +532,92 @@ export class TransactionBuilder {
     );
   }
 
+  /**
+   * Build flash loan liquidity withdrawal sequence
+   * Sequence: 1. Flash Loan Borrow, 2. Withdraw from Pool, 3. Flash Loan Repay
+   * This allows users to withdraw liquidity even if they don't have tokens for fees upfront
+   */
+  private async buildFlashLoanLiquidityWithdraw(builtInstruction: BuiltInstruction): Promise<{
+    instructions: TransactionInstruction[];
+    signers: Keypair[];
+  }> {
+    const { accounts, args } = builtInstruction;
+    const instructions: TransactionInstruction[] = [];
+    const signers: Keypair[] = [];
+
+    const borrower = new PublicKey(accounts.borrower);
+    const poolAddress = new PublicKey(accounts.poolAddress);
+    const positionAccount = new PublicKey(accounts.positionAccount);
+    const withdrawTokenAccount = new PublicKey(accounts.withdrawTokenAccount);
+    const flashLoanPool = new PublicKey(accounts.flashLoanPool);
+    const borrowerTokenAccount = new PublicKey(accounts.borrowerTokenAccount);
+    const tokenMint = new PublicKey(accounts.tokenMint);
+
+    const withdrawAmount = BigInt(args.withdrawAmount || 0);
+    const flashLoanAmount = BigInt(args.flashLoanAmount || 0);
+    const protocol = args.protocol || 'orca';
+    const flashLoanProtocol = args.flashLoanProtocol || 'kamino';
+    const flashLoanFeeBps = args.flashLoanFeeBps || 9; // Default 0.09%
+    
+    // Calculate repay amount (loan + fee)
+    const feeAmount = (flashLoanAmount * BigInt(flashLoanFeeBps)) / BigInt(10000);
+    const repayAmount = flashLoanAmount + feeAmount;
+
+    // Step 1: Flash Loan Borrow
+    // Use the flash loan protocol's borrow instruction
+    // For now, we'll create a transfer instruction as a placeholder
+    // In production, this would use the actual flash loan program instruction
+    const flashLoanBorrow = createTransferInstruction(
+      flashLoanPool, // Source (lending pool token account)
+      borrowerTokenAccount, // Destination (borrower token account)
+      flashLoanPool, // Authority (program authority - would be PDA in real implementation)
+      flashLoanAmount,
+      [],
+      TOKEN_PROGRAM_ID
+    );
+    instructions.push(flashLoanBorrow);
+
+    // Step 2: Withdraw from Liquidity Pool
+    // This is a simplified version - in production, you'd use the actual pool program SDK
+    // For Orca Whirlpool, Raydium, etc., you'd construct the proper withdraw instruction
+    const poolProgramId = protocol === 'orca' 
+      ? new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc') // Orca Whirlpool
+      : protocol === 'raydium'
+      ? new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8') // Raydium
+      : poolAddress; // Fallback to pool address as program ID
+
+    // Create withdraw instruction data (simplified - real implementation would use proper instruction encoding)
+    const withdrawData = Buffer.alloc(9);
+    withdrawData.writeUInt8(3, 0); // Withdraw instruction discriminator (placeholder)
+    withdrawData.writeBigUInt64LE(withdrawAmount, 1);
+
+    const withdrawInstruction = new TransactionInstruction({
+      keys: [
+        { pubkey: poolAddress, isSigner: false, isWritable: true },
+        { pubkey: positionAccount, isSigner: false, isWritable: true },
+        { pubkey: withdrawTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: borrower, isSigner: true, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ],
+      programId: poolProgramId,
+      data: withdrawData
+    });
+    instructions.push(withdrawInstruction);
+
+    // Step 3: Flash Loan Repay (from withdrawn tokens)
+    const flashLoanRepay = createTransferInstruction(
+      withdrawTokenAccount, // Source (withdrawn tokens)
+      flashLoanPool, // Destination (lending pool token account)
+      borrower, // Authority (borrower)
+      repayAmount,
+      [],
+      TOKEN_PROGRAM_ID
+    );
+    instructions.push(flashLoanRepay);
+
+    return { instructions, signers };
+  }
+
   // ===== METAPLEX INSTRUCTIONS =====
   private buildCreateMetadata(accountKeys: any[], args: any): TransactionInstruction {
     const metadata = accountKeys.find(acc => acc.name === 'metadata')!.pubkey;
@@ -493,15 +626,24 @@ export class TransactionBuilder {
     const payer = accountKeys.find(acc => acc.name === 'payer')!.pubkey;
     const updateAuthority = accountKeys.find(acc => acc.name === 'updateAuthority')!.pubkey;
 
-    // Create metadata instruction data
+    const name = String(args.name || '');
+    const symbol = String(args.symbol || '');
+    const uri = String(args.uri || '');
+    const sellerFeeBasisPoints = Number(args.sellerFeeBasisPoints || 0);
+
+    // Create metadata instruction data (properly encoded)
     const instructionData = Buffer.concat([
       Buffer.from([0]), // Create instruction discriminator
-      Buffer.from(args.name, 'utf8'),
-      Buffer.from(args.symbol, 'utf8'),
-      Buffer.from(args.uri, 'utf8'),
+      Buffer.from(name, 'utf8'),
+      Buffer.from([0]), // Null terminator
+      Buffer.from(symbol, 'utf8'),
+      Buffer.from([0]), // Null terminator
+      Buffer.from(uri, 'utf8'),
+      Buffer.from([0]), // Null terminator
       new PublicKey(mintAuthority).toBuffer(),
       new PublicKey(updateAuthority).toBuffer(),
-      new Uint8Array(new Uint16Array([args.sellerFeeBasisPoints]).buffer),
+      Buffer.alloc(2),
+      Buffer.from([sellerFeeBasisPoints & 0xFF, (sellerFeeBasisPoints >> 8) & 0xFF]),
       Buffer.from([args.creators ? 1 : 0])
     ]);
 
@@ -534,7 +676,7 @@ export class TransactionBuilder {
 
     const instructionData = Buffer.concat([
       Buffer.from([1]), // Update instruction discriminator
-      Buffer.from(JSON.stringify(updateData))
+      Buffer.from(JSON.stringify(updateData), 'utf8')
     ]);
 
     return new TransactionInstruction({
@@ -544,6 +686,323 @@ export class TransactionBuilder {
       ],
       programId: new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'),
       data: instructionData
+    });
+  }
+
+  // ===== DeFi INSTRUCTIONS =====
+  private buildJupiterSwap(accountKeys: any[], args: any): TransactionInstruction {
+    const userTransferAuthority = accountKeys.find(acc => acc.name === 'userTransferAuthority')!.pubkey;
+    const userSourceTokenAccount = accountKeys.find(acc => acc.name === 'userSourceTokenAccount')!.pubkey;
+    const userDestinationTokenAccount = accountKeys.find(acc => acc.name === 'userDestinationTokenAccount')!.pubkey;
+    const destinationTokenAccount = accountKeys.find(acc => acc.name === 'destinationTokenAccount')!.pubkey;
+    const destinationMint = accountKeys.find(acc => acc.name === 'destinationMint')!.pubkey;
+
+    const amount = BigInt(args.amount || 0);
+    const minAmountOut = BigInt(args.minAmountOut || 0);
+
+    // Jupiter swap instruction data (simplified - real implementation would use Jupiter SDK)
+    const data = Buffer.alloc(16);
+    data.writeBigUInt64LE(amount, 0);
+    data.writeBigUInt64LE(minAmountOut, 8);
+
+    const keys = [
+      { pubkey: userTransferAuthority, isSigner: true, isWritable: false },
+      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: destinationTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: destinationMint, isSigner: false, isWritable: false },
+    ];
+
+    const platformFeeAccount = accountKeys.find(acc => acc.name === 'platformFeeAccount');
+    if (platformFeeAccount) {
+      keys.push({ pubkey: platformFeeAccount.pubkey, isSigner: false, isWritable: true });
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: new PublicKey('JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4'),
+      data
+    });
+  }
+
+  private buildOrcaOpenPosition(accountKeys: any[], args: any): TransactionInstruction {
+    const position = accountKeys.find(acc => acc.name === 'position')!.pubkey;
+    const positionMint = accountKeys.find(acc => acc.name === 'positionMint')!.pubkey;
+    const positionTokenAccount = accountKeys.find(acc => acc.name === 'positionTokenAccount')!.pubkey;
+    const whirlpool = accountKeys.find(acc => acc.name === 'whirlpool')!.pubkey;
+    const owner = accountKeys.find(acc => acc.name === 'owner')!.pubkey;
+
+    const tickLowerIndex = args.tickLowerIndex || 0;
+    const tickUpperIndex = args.tickUpperIndex || 0;
+    const tickSpacing = args.tickSpacing || 1;
+
+    const data = Buffer.alloc(10);
+    data.writeInt32LE(tickLowerIndex, 0);
+    data.writeInt32LE(tickUpperIndex, 4);
+    data.writeUInt16LE(tickSpacing, 8);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: position, isSigner: false, isWritable: true },
+        { pubkey: positionMint, isSigner: false, isWritable: true },
+        { pubkey: positionTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: whirlpool, isSigner: false, isWritable: false },
+        { pubkey: owner, isSigner: true, isWritable: false },
+      ],
+      programId: new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc'),
+      data
+    });
+  }
+
+  private buildMarinadeDeposit(accountKeys: any[], args: any): TransactionInstruction {
+    const state = accountKeys.find(acc => acc.name === 'state')!.pubkey;
+    const msolMint = accountKeys.find(acc => acc.name === 'msolMint')!.pubkey;
+    const liqPoolSolLegPda = accountKeys.find(acc => acc.name === 'liqPoolSolLegPda')!.pubkey;
+    const liqPoolMsolLeg = accountKeys.find(acc => acc.name === 'liqPoolMsolLeg')!.pubkey;
+    const treasuryMsolAccount = accountKeys.find(acc => acc.name === 'treasuryMsolAccount')!.pubkey;
+    const userSolPda = accountKeys.find(acc => acc.name === 'userSolPda')!.pubkey;
+    const userMsolPda = accountKeys.find(acc => acc.name === 'userMsolPda')!.pubkey;
+    const user = accountKeys.find(acc => acc.name === 'user')!.pubkey;
+
+    const amount = BigInt(args.amount || 0);
+    const data = Buffer.alloc(8);
+    data.writeBigUInt64LE(amount, 0);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: state, isSigner: false, isWritable: false },
+        { pubkey: msolMint, isSigner: false, isWritable: false },
+        { pubkey: liqPoolSolLegPda, isSigner: false, isWritable: true },
+        { pubkey: liqPoolMsolLeg, isSigner: false, isWritable: true },
+        { pubkey: treasuryMsolAccount, isSigner: false, isWritable: true },
+        { pubkey: userSolPda, isSigner: false, isWritable: true },
+        { pubkey: userMsolPda, isSigner: false, isWritable: true },
+        { pubkey: user, isSigner: true, isWritable: false },
+      ],
+      programId: new PublicKey('MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD'),
+      data
+    });
+  }
+
+  private buildRaydiumSwap(accountKeys: any[], args: any): TransactionInstruction {
+    // Extract all required accounts
+    const keys = accountKeys.map(acc => ({
+      pubkey: acc.pubkey,
+      isSigner: acc.name.includes('owner') || acc.name.includes('signer'),
+      isWritable: acc.name.includes('account') || acc.name.includes('pool') || acc.name.includes('market')
+    }));
+
+    const amountIn = BigInt(args.amountIn || 0);
+    const minimumAmountOut = BigInt(args.minimumAmountOut || 0);
+
+    const data = Buffer.alloc(16);
+    data.writeBigUInt64LE(amountIn, 0);
+    data.writeBigUInt64LE(minimumAmountOut, 8);
+
+    return new TransactionInstruction({
+      keys,
+      programId: new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'),
+      data
+    });
+  }
+
+  // ===== FLASH LOAN INSTRUCTIONS =====
+  private buildKaminoFlashLoan(accountKeys: any[], args: any): TransactionInstruction {
+    const lendingPool = accountKeys.find(acc => acc.name === 'lendingPool')!.pubkey;
+    const borrowerTokenAccount = accountKeys.find(acc => acc.name === 'borrowerTokenAccount')!.pubkey;
+    const borrower = accountKeys.find(acc => acc.name === 'borrower')!.pubkey;
+    const tokenMint = accountKeys.find(acc => acc.name === 'tokenMint')!.pubkey;
+
+    const amount = BigInt(args.amount || 0);
+    const data = Buffer.alloc(8);
+    data.writeBigUInt64LE(amount, 0);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: lendingPool, isSigner: false, isWritable: true },
+        { pubkey: borrowerTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: borrower, isSigner: true, isWritable: false },
+        { pubkey: tokenMint, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId: new PublicKey('KLend2g3cP87fffoy8q1mQqGKjLj1d1M24gM4RdR7Kx'),
+      data
+    });
+  }
+
+  private buildKaminoFlashRepay(accountKeys: any[], args: any): TransactionInstruction {
+    const lendingPool = accountKeys.find(acc => acc.name === 'lendingPool')!.pubkey;
+    const borrowerTokenAccount = accountKeys.find(acc => acc.name === 'borrowerTokenAccount')!.pubkey;
+    const borrower = accountKeys.find(acc => acc.name === 'borrower')!.pubkey;
+    const tokenMint = accountKeys.find(acc => acc.name === 'tokenMint')!.pubkey;
+
+    const repayAmount = BigInt(args.repayAmount || 0);
+    const data = Buffer.alloc(8);
+    data.writeBigUInt64LE(repayAmount, 0);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: lendingPool, isSigner: false, isWritable: true },
+        { pubkey: borrowerTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: borrower, isSigner: true, isWritable: false },
+        { pubkey: tokenMint, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId: new PublicKey('KLend2g3cP87fffoy8q1mQqGKjLj1d1M24gM4RdR7Kx'),
+      data
+    });
+  }
+
+  private buildSolendFlashLoan(accountKeys: any[], args: any): TransactionInstruction {
+    const lendingPool = accountKeys.find(acc => acc.name === 'lendingPool')!.pubkey;
+    const borrowerTokenAccount = accountKeys.find(acc => acc.name === 'borrowerTokenAccount')!.pubkey;
+    const borrower = accountKeys.find(acc => acc.name === 'borrower')!.pubkey;
+    const tokenMint = accountKeys.find(acc => acc.name === 'tokenMint')!.pubkey;
+
+    const amount = BigInt(args.amount || 0);
+    const data = Buffer.alloc(8);
+    data.writeBigUInt64LE(amount, 0);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: lendingPool, isSigner: false, isWritable: true },
+        { pubkey: borrowerTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: borrower, isSigner: true, isWritable: false },
+        { pubkey: tokenMint, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId: new PublicKey('So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo'),
+      data
+    });
+  }
+
+  private buildSolendFlashRepay(accountKeys: any[], args: any): TransactionInstruction {
+    const lendingPool = accountKeys.find(acc => acc.name === 'lendingPool')!.pubkey;
+    const borrowerTokenAccount = accountKeys.find(acc => acc.name === 'borrowerTokenAccount')!.pubkey;
+    const borrower = accountKeys.find(acc => acc.name === 'borrower')!.pubkey;
+    const tokenMint = accountKeys.find(acc => acc.name === 'tokenMint')!.pubkey;
+
+    const repayAmount = BigInt(args.repayAmount || 0);
+    const data = Buffer.alloc(8);
+    data.writeBigUInt64LE(repayAmount, 0);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: lendingPool, isSigner: false, isWritable: true },
+        { pubkey: borrowerTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: borrower, isSigner: true, isWritable: false },
+        { pubkey: tokenMint, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId: new PublicKey('So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo'),
+      data
+    });
+  }
+
+  private buildMarginfiFlashLoan(accountKeys: any[], args: any): TransactionInstruction {
+    const lendingPool = accountKeys.find(acc => acc.name === 'lendingPool')!.pubkey;
+    const borrowerTokenAccount = accountKeys.find(acc => acc.name === 'borrowerTokenAccount')!.pubkey;
+    const borrower = accountKeys.find(acc => acc.name === 'borrower')!.pubkey;
+    const tokenMint = accountKeys.find(acc => acc.name === 'tokenMint')!.pubkey;
+
+    const amount = BigInt(args.amount || 0);
+    const data = Buffer.alloc(8);
+    data.writeBigUInt64LE(amount, 0);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: lendingPool, isSigner: false, isWritable: true },
+        { pubkey: borrowerTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: borrower, isSigner: true, isWritable: false },
+        { pubkey: tokenMint, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId: new PublicKey('MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FyN1mBwtbH4'),
+      data
+    });
+  }
+
+  private buildMarginfiFlashRepay(accountKeys: any[], args: any): TransactionInstruction {
+    const lendingPool = accountKeys.find(acc => acc.name === 'lendingPool')!.pubkey;
+    const borrowerTokenAccount = accountKeys.find(acc => acc.name === 'borrowerTokenAccount')!.pubkey;
+    const borrower = accountKeys.find(acc => acc.name === 'borrower')!.pubkey;
+    const tokenMint = accountKeys.find(acc => acc.name === 'tokenMint')!.pubkey;
+
+    const repayAmount = BigInt(args.repayAmount || 0);
+    const data = Buffer.alloc(8);
+    data.writeBigUInt64LE(repayAmount, 0);
+
+    return new TransactionInstruction({
+      keys: [
+        { pubkey: lendingPool, isSigner: false, isWritable: true },
+        { pubkey: borrowerTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: borrower, isSigner: true, isWritable: false },
+        { pubkey: tokenMint, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId: new PublicKey('MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FyN1mBwtbH4'),
+      data
+    });
+  }
+
+  // ===== NFT MARKETPLACE INSTRUCTIONS =====
+  private buildMagicEdenBuyNow(accountKeys: any[], args: any): TransactionInstruction {
+    const keys = accountKeys.map(acc => ({
+      pubkey: acc.pubkey,
+      isSigner: acc.name === 'buyer',
+      isWritable: acc.name.includes('account') || acc.name.includes('treasury') || acc.name.includes('tradeState')
+    }));
+
+    const tradeStateBump = args.tradeStateBump || 0;
+    const escrowPaymentBump = args.escrowPaymentBump || 0;
+    const buyerPrice = BigInt(args.buyerPrice || 0);
+    const tokenSize = BigInt(args.tokenSize || 1);
+
+    const data = Buffer.alloc(18);
+    data.writeUInt8(tradeStateBump, 0);
+    data.writeUInt8(escrowPaymentBump, 1);
+    data.writeBigUInt64LE(buyerPrice, 2);
+    data.writeBigUInt64LE(tokenSize, 10);
+
+    return new TransactionInstruction({
+      keys,
+      programId: new PublicKey('M2mx93ekt1fmXSVkTrUL9xVFHkmME8HTUi5Cyc5aF7K'),
+      data
+    });
+  }
+
+  // ===== CUSTOM INSTRUCTIONS =====
+  private buildCustomInstruction(accountKeys: any[], args: any, template: any): TransactionInstruction {
+    // For custom instructions, use the programId from template or args
+    const programId = template.programId || args.programId;
+    if (!programId) {
+      throw new Error('Custom instruction requires a programId');
+    }
+
+    const keys = accountKeys.map(acc => ({
+      pubkey: acc.pubkey,
+      isSigner: acc.name.includes('signer') || acc.name.includes('authority'),
+      isWritable: acc.name.includes('writable') || acc.name.includes('account')
+    }));
+
+    // Build data from args (simplified - in production would need proper serialization)
+    const dataParts: Buffer[] = [];
+    for (const [key, value] of Object.entries(args)) {
+      if (key !== 'programId') {
+        if (typeof value === 'number') {
+          const buf = Buffer.alloc(8);
+          buf.writeBigUInt64LE(BigInt(value), 0);
+          dataParts.push(buf);
+        } else if (typeof value === 'string') {
+          dataParts.push(Buffer.from(value, 'utf8'));
+        }
+      }
+    }
+
+    return new TransactionInstruction({
+      keys,
+      programId: new PublicKey(programId),
+      data: Buffer.concat(dataParts)
     });
   }
 

@@ -438,6 +438,32 @@ export const INSTRUCTION_TEMPLATES: InstructionTemplate[] = [
     ]
   },
 
+  // ===== LIQUIDITY WITHDRAWAL WITH FLASH LOAN =====
+  {
+    id: 'flash_loan_liquidity_withdraw',
+    programId: '', // Multi-program operation
+    name: 'Withdraw Liquidity via Flash Loan',
+    description: 'Withdraw staked liquidity from a pool using a flash loan. Flash loan covers withdrawal fees, then repaid from withdrawn tokens.',
+    category: 'defi',
+    accounts: [
+      { name: 'borrower', type: 'signer', description: 'User withdrawing liquidity' },
+      { name: 'poolAddress', type: 'readonly', description: 'Liquidity pool address (Orca, Raydium, etc.)' },
+      { name: 'positionAccount', type: 'writable', description: 'User position account in the pool' },
+      { name: 'withdrawTokenAccount', type: 'writable', description: 'Token account receiving withdrawn tokens' },
+      { name: 'flashLoanProtocol', type: 'readonly', description: 'Flash loan protocol (kamino, solend, marginfi)' },
+      { name: 'flashLoanPool', type: 'writable', description: 'Flash loan lending pool' },
+      { name: 'borrowerTokenAccount', type: 'writable', description: 'Borrower token account for flash loan' },
+      { name: 'tokenMint', type: 'readonly', description: 'Token mint for flash loan and withdrawal' }
+    ],
+    args: [
+      { name: 'withdrawAmount', type: 'u64', description: 'Amount of LP tokens to withdraw', validation: { min: 1 } },
+      { name: 'flashLoanAmount', type: 'u64', description: 'Amount to borrow via flash loan (should cover fees)', validation: { min: 1 } },
+      { name: 'protocol', type: 'string', description: 'Pool protocol (orca, raydium, etc.)', defaultValue: 'orca' },
+      { name: 'flashLoanProtocol', type: 'string', description: 'Flash loan protocol (kamino, solend, marginfi)', defaultValue: 'kamino' },
+      { name: 'flashLoanFeeBps', type: 'u16', description: 'Flash loan fee in basis points (e.g., 9 = 0.09%)', defaultValue: 9, isOptional: true }
+    ]
+  },
+
   // ===== CUSTOM INSTRUCTIONS =====
   {
     id: 'custom_instruction',

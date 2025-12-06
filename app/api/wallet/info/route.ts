@@ -51,9 +51,22 @@ export async function GET(request: NextRequest) {
 
     const connection = new Connection(rpcUrl, 'confirmed');
 
-    // Get balance
+    // Get balance with timeout and retry
     const publicKey = new PublicKey(walletAddress);
-    const balance = await connection.getBalance(publicKey);
+    let balance = 0;
+    try {
+      // Add timeout to prevent hanging
+      const balancePromise = connection.getBalance(publicKey);
+      const timeoutPromise = new Promise<number>((_, reject) => 
+        setTimeout(() => reject(new Error('RPC request timeout')), 10000)
+      );
+      balance = await Promise.race([balancePromise, timeoutPromise]);
+    } catch (rpcError) {
+      // If RPC fails, return 0 balance instead of error
+      // This allows the wallet to be created even if RPC is temporarily unavailable
+      console.warn(`RPC error getting balance for ${walletAddress}:`, rpcError);
+      balance = 0; // Default to 0 if RPC fails
+    }
     const solBalance = balance / LAMPORTS_PER_SOL;
 
     // Get transaction count (optional, can be slow)

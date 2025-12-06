@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Wallet, Loader2, Sparkles, ArrowRight, Copy, Download, AlertTriangle, Check, X, Eye, EyeOff } from 'lucide-react';
+import { Wallet, Loader2, Sparkles, ArrowRight, Copy, Download, AlertTriangle, Check, X, Eye, EyeOff, Mail, Shield } from 'lucide-react';
 import { CopyButton } from './CopyButton';
+import { WalletPassphraseModal } from './WalletPassphraseModal';
+import { WalletEducationModal } from './WalletEducationModal';
+import { WelcomeTutorialModal } from './WelcomeTutorialModal';
 
 interface LoginGateProps {
   children: React.ReactNode;
@@ -15,14 +18,14 @@ export function LoginGate({ children }: LoginGateProps) {
   const { publicKey, connect, disconnect, connecting, connected } = useWallet();
   const [isCreating, setIsCreating] = useState(false);
   const [email, setEmail] = useState('');
-  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailVerificationToken, setEmailVerificationToken] = useState('');
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [showWalletEducation, setShowWalletEducation] = useState(false);
+  const [showWelcomeTutorial, setShowWelcomeTutorial] = useState(false);
   const [vanityPrefix, setVanityPrefix] = useState('');
   const [walletMode, setWalletMode] = useState<'custodial' | 'hot' | null>(null);
-  const [passphrase, setPassphrase] = useState<string | null>(null);
-  const [showPassphrase, setShowPassphrase] = useState(false);
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
-  const [passphraseCopied, setPassphraseCopied] = useState(false);
-  const [passphraseSaved, setPassphraseSaved] = useState(false);
+  const [walletCreationResult, setWalletCreationResult] = useState<{ passphrase: string; privateKey?: string; walletAddress: string } | null>(null);
 
   // Show loading state while checking for user
   if (isLoading) {
@@ -37,41 +40,105 @@ export function LoginGate({ children }: LoginGateProps) {
   }
 
   // If user is logged in or hot wallet connected, show children
-  if (user || (connected && publicKey)) {
+  // BUT if we just created a wallet and need to show passphrase or tutorial, show modals first
+  if ((user || (connected && publicKey)) && !walletCreationResult && !showWelcomeTutorial) {
     return <>{children}</>;
   }
 
-  // Show login/wallet creation screen
-  const handleCreateWallet = async () => {
-    if (isCreating) return;
+  // Handle email submission and verification
+  const handleEmailSubmit = async () => {
+    if (!email || !email.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
 
     setIsCreating(true);
     try {
-      const response = await fetch('/api/wallet/create', {
+      // Request email verification
+      const response = await fetch('/api/wallet/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: showEmailInput && email ? email : undefined,
-          vanityPrefix: vanityPrefix.trim() || undefined,
-        }),
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
       
       if (!data.success) {
-        throw new Error(data.error || 'Failed to create wallet');
+        throw new Error(data.error || 'Failed to send verification email');
       }
 
-      // Store passphrase if provided
-      if (data.passphrase) {
-        setPassphrase(data.passphrase);
-        setShowDisclaimer(true);
-      } else {
-        // If no passphrase, just create wallet normally
-        await createWallet(
-          showEmailInput && email ? email : undefined,
-          vanityPrefix.trim() || undefined
-        );
+      // Show email verification input
+      setShowEmailVerification(true);
+      if (data.token) {
+        // In development, show token for testing
+        setEmailVerificationToken(data.token);
+      }
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      alert(error instanceof Error ? error.message : 'Failed to send verification email. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Verify email token
+  const handleVerifyEmail = async () => {
+    if (!emailVerificationToken.trim()) {
+      alert('Please enter the verification code from your email');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const response = await fetch('/api/wallet/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token: emailVerificationToken.trim() }),
+      });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Invalid verification code');
+      }
+
+      setEmailVerified(true);
+      setShowEmailVerification(false);
+      // Now create the wallet
+      await handleCreateWallet();
+    } catch (error) {
+      console.error('Failed to verify email:', error);
+      alert(error instanceof Error ? error.message : 'Invalid verification code. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Show login/wallet creation screen
+  const handleCreateWallet = async () => {
+    if (isCreating) return;
+
+    if (!email || !email.includes('@')) {
+      alert('Email is required for wallet recovery');
+      return;
+    }
+
+    if (!emailVerified) {
+      alert('Please verify your email first');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      // Use UserContext createWallet which returns the passphrase/private key
+      const result = await createWallet(
+        email,
+        vanityPrefix.trim() || undefined
+      );
+
+      if (result) {
+        // Show passphrase modal
+        setWalletCreationResult(result);
       }
     } catch (error) {
       console.error('Failed to create wallet:', error);
@@ -90,206 +157,25 @@ export function LoginGate({ children }: LoginGateProps) {
     }
   };
 
-  const handleDownloadPassphrase = () => {
-    if (!passphrase) return;
-    
-    const blob = new Blob([passphrase], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wallet-passphrase-${Date.now()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setPassphraseSaved(true);
+  const handlePassphraseContinue = () => {
+    // Clear passphrase modal and show welcome tutorial
+    setWalletCreationResult(null);
+    setShowWelcomeTutorial(true);
   };
 
-  const handleCopyPassphrase = async () => {
-    if (!passphrase) return;
-    
-    try {
-      await navigator.clipboard.writeText(passphrase);
-      setPassphraseCopied(true);
-      setTimeout(() => setPassphraseCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
+  const handleWelcomeTutorialComplete = () => {
+    setShowWelcomeTutorial(false);
+    // Mark tutorial as completed
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sealevel-welcome-tutorial-completed', 'true');
     }
+    // User is now logged in and tutorial is complete
   };
 
-  const handleContinueAfterPassphrase = async () => {
-    if (!passphraseSaved && !passphraseCopied) {
-      alert('Please save or copy your passphrase before continuing!');
-      return;
-    }
-
-    // Create wallet in user context
-    try {
-      await createWallet(
-        showEmailInput && email ? email : undefined,
-        vanityPrefix.trim() || undefined
-      );
-      setShowPassphrase(false);
-      setShowDisclaimer(false);
-      setPassphrase(null);
-    } catch (error) {
-      console.error('Failed to finalize wallet creation:', error);
-    }
+  const handleWalletEducationContinue = () => {
+    setShowWalletEducation(false);
+    // Show email input after education
   };
-
-  // Show passphrase screen
-  if (showPassphrase && passphrase) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-slate-900 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-        <div className="max-w-2xl w-full my-auto">
-          <div className="relative bg-gradient-to-br from-gray-800/95 to-gray-900/95 backdrop-blur-md border-2 border-purple-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full mb-4 border border-green-500/30">
-                <Wallet className="w-8 h-8 text-green-400" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold mb-2 bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">
-                Save Your Recovery Passphrase
-              </h1>
-              <p className="text-gray-400 text-sm sm:text-base">
-                Write down these 12 words in order and keep them safe
-              </p>
-            </div>
-
-            {/* Passphrase Display */}
-            <div className="mb-6">
-              <div className="bg-gray-800/50 border-2 border-purple-500/30 rounded-xl p-6 mb-4">
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {passphrase.split(' ').map((word, index) => (
-                    <div
-                      key={index}
-                      className="bg-gray-900/50 border border-gray-700 rounded-lg p-3 text-center"
-                    >
-                      <span className="text-xs text-gray-500 mr-2">{index + 1}.</span>
-                      <span className="text-white font-semibold">{word}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleCopyPassphrase}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors"
-                >
-                  {passphraseCopied ? (
-                    <>
-                      <Check className="w-5 h-5" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-5 h-5" />
-                      Copy Passphrase
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleDownloadPassphrase}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
-                >
-                  <Download className="w-5 h-5" />
-                  Download as File
-                </button>
-              </div>
-            </div>
-
-            {/* Warning */}
-            <div className="mb-6 p-4 bg-red-900/20 border-2 border-red-500/50 rounded-xl">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
-                <div className="text-left">
-                  <h3 className="text-red-400 font-semibold mb-2">⚠️ Critical Security Warning</h3>
-                  <ul className="text-sm text-gray-300 space-y-1 list-disc list-inside">
-                    <li>Never share your passphrase with anyone</li>
-                    <li>Store it in a secure location offline</li>
-                    <li>Anyone with your passphrase can access your wallet</li>
-                    <li>If you lose your passphrase, you cannot recover your wallet</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Continue Button */}
-            <button
-              onClick={handleContinueAfterPassphrase}
-              disabled={!passphraseSaved && !passphraseCopied}
-              className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <ArrowRight className="w-5 h-5" />
-              I've Saved My Passphrase - Continue
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show disclaimer before passphrase
-  if (showDisclaimer) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-slate-900 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-        <div className="max-w-lg w-full my-auto">
-          <div className="relative bg-gradient-to-br from-gray-800/95 to-gray-900/95 backdrop-blur-md border-2 border-yellow-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-full mb-4 border border-yellow-500/30">
-                <AlertTriangle className="w-8 h-8 text-yellow-400" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-white">
-                Important: Save Your Passphrase
-              </h1>
-            </div>
-
-            <div className="mb-6 space-y-4">
-              <div className="p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-xl">
-                <p className="text-sm text-yellow-200 mb-3">
-                  Your wallet has been created! You will now see a 12-word recovery passphrase.
-                </p>
-                <p className="text-sm text-yellow-200 mb-3">
-                  <strong>This is the ONLY way to recover your wallet.</strong> If you lose this passphrase, you will permanently lose access to your wallet and all funds.
-                </p>
-                <p className="text-sm text-yellow-200">
-                  Please ensure you:
-                </p>
-                <ul className="text-sm text-yellow-200 mt-2 space-y-1 list-disc list-inside">
-                  <li>Write it down on paper</li>
-                  <li>Store it in a secure location</li>
-                  <li>Never share it with anyone</li>
-                  <li>Keep multiple copies in safe places</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowDisclaimer(false);
-                  setPassphrase(null);
-                }}
-                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowDisclaimer(false);
-                  setShowPassphrase(true);
-                }}
-                className="flex-1 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white rounded-lg font-semibold transition-colors"
-              >
-                I Understand - Show Passphrase
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-slate-900 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -325,7 +211,10 @@ export function LoginGate({ children }: LoginGateProps) {
                 Connect Hot Wallet (Phantom, Solflare, etc.)
               </button>
               <button
-                onClick={() => setWalletMode('custodial')}
+                onClick={() => {
+                  setWalletMode('custodial');
+                  setShowWalletEducation(true);
+                }}
                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-5 h-5" />
@@ -368,7 +257,7 @@ export function LoginGate({ children }: LoginGateProps) {
           )}
 
           {/* Custodial Wallet Creation */}
-          {walletMode === 'custodial' && (
+          {walletMode === 'custodial' && !showEmailVerification && (
             <div className="space-y-4">
               <button
                 onClick={() => setWalletMode(null)}
@@ -378,72 +267,134 @@ export function LoginGate({ children }: LoginGateProps) {
                 Back
               </button>
 
-              {/* Email Input (Optional) */}
-              {showEmailInput && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                      Email (Optional - for wallet recovery)
-                    </label>
+              {/* Email Input (Required) */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                    Email Address <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
                     />
                   </div>
-
-                  {/* Vanity Address Generation */}
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                      🎨 Vanity Address (Optional - for fun!)
-                    </label>
-                    <input
-                      type="text"
-                      value={vanityPrefix}
-                      onChange={(e) => {
-                        const value = e.target.value.toUpperCase().replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
-                        setVanityPrefix(value);
-                      }}
-                      placeholder="Type prefix (e.g., 'SEAL', 'ABC')"
-                      maxLength={8}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Your wallet address will start with this prefix! Shorter prefixes (1-3 chars) are faster.
-                    </p>
-                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Required for wallet recovery. We'll send a verification code to this email.
+                  </p>
                 </div>
-              )}
 
-              {/* Create Wallet Button */}
+                {/* Vanity Address Generation (Optional) */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                    🎨 Vanity Address (Optional - for fun!)
+                  </label>
+                  <input
+                    type="text"
+                    value={vanityPrefix}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase().replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
+                      setVanityPrefix(value);
+                    }}
+                    placeholder="Type prefix (e.g., 'SEAL', 'ABC')"
+                    maxLength={8}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Your wallet address will start with this prefix! Shorter prefixes (1-3 chars) are faster.
+                  </p>
+                </div>
+              </div>
+
+              {/* Submit Email Button */}
               <button
-                onClick={handleCreateWallet}
-                disabled={isCreating}
+                onClick={handleEmailSubmit}
+                disabled={isCreating || !email || !email.includes('@')}
                 className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-purple-500/50 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 {isCreating ? (
                   <>
                     <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                    <span>Creating Wallet...</span>
+                    <span>Sending Verification...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Create New Wallet</span>
+                    <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span>Verify Email & Create Wallet</span>
                     <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </>
                 )}
               </button>
+            </div>
+          )}
 
-              {/* Email Toggle */}
-              <button
-                onClick={() => setShowEmailInput(!showEmailInput)}
-                className="w-full text-xs sm:text-sm text-gray-400 hover:text-gray-300 transition-colors py-1"
-              >
-                {showEmailInput ? 'Skip email (create wallet without recovery)' : 'Add email for wallet recovery'}
-              </button>
+          {/* Email Verification Input */}
+          {showEmailVerification && (
+            <div className="space-y-4">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-blue-300 font-semibold mb-1">Verification Email Sent!</p>
+                    <p className="text-xs text-blue-200">
+                      We've sent a verification code to <strong>{email}</strong>. Please check your inbox and enter the code below.
+                    </p>
+                    {emailVerificationToken && (
+                      <p className="text-xs text-yellow-300 mt-2">
+                        <strong>Dev Mode:</strong> Your verification code is: <code className="bg-gray-800 px-2 py-1 rounded">{emailVerificationToken}</code>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  value={emailVerificationToken}
+                  onChange={(e) => setEmailVerificationToken(e.target.value)}
+                  placeholder="Enter code from email"
+                  className="w-full px-4 py-2.5 sm:py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-center"
+                  maxLength={64}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowEmailVerification(false);
+                    setEmailVerificationToken('');
+                  }}
+                  className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleVerifyEmail}
+                  disabled={isCreating || !emailVerificationToken.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4" />
+                      Verify & Create Wallet
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
@@ -473,6 +424,32 @@ export function LoginGate({ children }: LoginGateProps) {
           )}
         </div>
       </div>
+
+      {/* Wallet Education Modal */}
+      {showWalletEducation && (
+        <WalletEducationModal
+          onContinue={handleWalletEducationContinue}
+          onSkip={handleWalletEducationContinue}
+        />
+      )}
+
+      {/* Wallet Passphrase Modal */}
+      {walletCreationResult && (
+        <WalletPassphraseModal
+          passphrase={walletCreationResult.passphrase}
+          walletAddress={walletCreationResult.walletAddress}
+          privateKey={walletCreationResult.privateKey}
+          onContinue={handlePassphraseContinue}
+        />
+      )}
+
+      {/* Welcome Tutorial Modal */}
+      {showWelcomeTutorial && (
+        <WelcomeTutorialModal
+          onComplete={handleWelcomeTutorialComplete}
+          onSkip={handleWelcomeTutorialComplete}
+        />
+      )}
     </div>
   );
 }

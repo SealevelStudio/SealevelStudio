@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Keypair } from '@solana/web3.js';
 import crypto from 'crypto';
+import bs58 from 'bs58';
 import { storeWalletEmailMapping, getWalletByEmail } from '@/app/lib/wallet-recovery/database-store';
 import { createEmailVerificationToken, isEmailVerified } from '@/app/lib/wallet-recovery/email-verification';
 import { checkConnection } from '@/app/lib/database/connection';
@@ -163,6 +164,11 @@ export async function POST(request: NextRequest) {
     // Generate mnemonic passphrase from secret key
     const passphrase = generateMnemonicFromKeypair(secretKey);
     
+    // Convert secret key to base58 for one-time display (only on creation)
+    // WARNING: This is a one-time return - never return again for security
+    // Base58 is the standard format for Solana private keys
+    const privateKeyBase58 = bs58.encode(secretKey);
+    
     // Base wallet data
     const walletData = {
       success: true,
@@ -172,6 +178,7 @@ export async function POST(request: NextRequest) {
         createdAt: new Date().toISOString(),
       },
       passphrase, // Include passphrase in response (user should save this)
+      privateKey: privateKeyBase58, // One-time return - only on creation for backup
     };
 
     // Handle email-based wallet recovery (if email provided)

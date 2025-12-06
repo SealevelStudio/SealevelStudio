@@ -16,16 +16,20 @@
     "test:advanced-tx": "ts-node scripts/test-advanced-transactions.ts",
     "test:feature-loader": "ts-node scripts/test-feature-loader.ts",
     "test:devnet-tx": "ts-node --project tsconfig.scripts.json scripts/devnet-transaction-tests.ts",
+    "test:tx-builder": "ts-node --project tsconfig.scripts.json scripts/test-tx-builder-combinations.ts",
     "check:attestation": "ts-node scripts/check-attestation-setup.ts",
     "test:social-bots": "ts-node --project tsconfig.scripts.json scripts/test-social-media-bots.ts",
     "train:solana-ai": "ts-node scripts/train-solana-ai.ts",
+    "setup:database": "ts-node scripts/setup-database.ts",
     "setup:merkle-tree": "ts-node scripts/setup-merkle-tree.ts",
     "setup:presale-merkle-tree": "ts-node scripts/setup-presale-merkle-tree.ts",
     "verify:merkle-tree": "ts-node scripts/verify-merkle-tree.ts",
     "webhook:server": "node scripts/webhook-server.js",
     "seed:transactions": "ts-node scripts/seed-transactions.ts",
     "tunnel:start": "bash scripts/start-cloudflare-tunnel.sh",
-    "tunnel:quick": "cloudflared tunnel --url http://localhost:3000"
+    "tunnel:quick": "cloudflared tunnel --url http://localhost:3000",
+    "test:bundler-50": "ts-node --project tsconfig.scripts.json scripts/test-bundler-50-wallets.ts",
+    "test:faucet": "ts-node --project tsconfig.scripts.json scripts/test-faucet.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

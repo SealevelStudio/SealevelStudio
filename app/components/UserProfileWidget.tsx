@@ -4,6 +4,7 @@ import { Twitter, Send, LogOut, User as UserIcon, Wallet, Coins, Loader2, Chevro
 import { DepositWallet } from './DepositWallet';
 import { Settings as SettingsComponent } from './Settings';
 import { CopyButton } from './CopyButton';
+import { WalletPassphraseModal } from './WalletPassphraseModal';
 
 export function UserProfileWidget() {
   const { user, isLoading, linkTwitter, linkTelegram, logout, refreshBalance, createWallet } = useUser();
@@ -14,6 +15,7 @@ export function UserProfileWidget() {
   const [showSettings, setShowSettings] = useState(false);
   const [email, setEmail] = useState('');
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
+  const [walletCreationResult, setWalletCreationResult] = useState<{ passphrase: string; privateKey?: string; walletAddress: string } | null>(null);
   // Compact header version - social connect is handled by SocialConnectButton in header
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -52,15 +54,27 @@ export function UserProfileWidget() {
 
     setIsCreatingWallet(true);
     try {
-      await createWallet(email);
-      setShowEmailModal(false);
-      setEmail('');
+      const result = await createWallet(email);
+      if (result) {
+        // Show passphrase modal
+        setWalletCreationResult(result);
+        setShowEmailModal(false);
+        setEmail('');
+      } else {
+        // Wallet created but no passphrase (existing wallet)
+        setShowEmailModal(false);
+        setEmail('');
+      }
     } catch (error) {
       console.error('Failed to create wallet:', error);
       alert('Failed to create wallet. Please try again.');
     } finally {
       setIsCreatingWallet(false);
     }
+  };
+
+  const handlePassphraseContinue = () => {
+    setWalletCreationResult(null);
   };
 
   if (!user) {
@@ -175,10 +189,10 @@ export function UserProfileWidget() {
       {showDropdown && (
         <>
           <div 
-            className="fixed inset-0 z-40" 
+            className="fixed inset-0 z-[100]" 
             onClick={() => setShowDropdown(false)}
           />
-          <div ref={dropdownRef} className="absolute right-0 mt-2 w-80 bg-gray-900/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+          <div ref={dropdownRef} className="absolute right-0 mt-2 w-80 bg-gray-900/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-2xl z-[101] overflow-hidden">
             <div className="p-4 border-b border-gray-700/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -266,6 +280,16 @@ export function UserProfileWidget() {
       {/* Settings Modal */}
       {showSettings && (
         <SettingsComponent onClose={() => setShowSettings(false)} />
+      )}
+
+      {/* Wallet Passphrase Modal */}
+      {walletCreationResult && (
+        <WalletPassphraseModal
+          passphrase={walletCreationResult.passphrase}
+          walletAddress={walletCreationResult.walletAddress}
+          privateKey={walletCreationResult.privateKey}
+          onContinue={handlePassphraseContinue}
+        />
       )}
     </div>
   );

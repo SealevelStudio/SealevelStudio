@@ -1,0 +1,49 @@
+{
+  "testConfig": {
+    "totalWallets": 50,
+    "network": "devnet",
+    "initialFunding": {
+      "amountPerWallet": 0.1,
+      "fundingWallet": "YOUR_FUNDING_WALLET_PRIVATE_KEY"
+    },
+    "walletGroups": {
+      "dcaBuy": {
+        "wallets": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "schedule": {
+          "enabled": true,
+          "intervalMinutes": 60,
+          "amountPerBuy": 0.01,
+          "targetToken": "SOL",
+          "maxBuys": 10
+        }
+      },
+      "scheduledSell": {
+        "wallets": [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+        "schedule": {
+          "enabled": true,
+          "intervalMinutes": 30,
+          "amountPerSell": 0.002,
+          "token": "SOL",
+          "maxSells": 20,
+          "destinationAddress": ""
+        }
+      },
+      "manual": {
+        "wallets": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+        "schedule": {
+          "enabled": false
+        }
+      }
+    },
+    "jitoBundle": {
+      "enabled": false,
+      "tipAmount": 10000
+    },
+    "logging": {
+      "level": "info",
+      "logToFile": true,
+      "logFile": "bundler-test.log"
+    }
+  }
+}
+

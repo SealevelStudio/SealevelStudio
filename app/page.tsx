@@ -27,6 +27,7 @@ import { CybersecurityDashboard } from './components/CybersecurityDashboard';
 import { DocsView } from './components/DocsView';
 import { TransactionBundler } from './components/TransactionBundler';
 import { AdvertisingBots } from './components/AdvertisingBots';
+import { DashboardView } from './components/DashboardView';
 import { SocialFeatures } from './components/SocialFeatures';
 import { ServiceBot } from './components/ServiceBot';
 import { FeatureHighlightLoader } from './components/FeatureHighlightLoader';
@@ -369,9 +370,9 @@ function parseSystemAccount(data: Buffer) {
 
 // ### Account Inspector View ###
 // This is the core feature we're building now
-function AccountInspectorView({ connection, network, publicKey }: { connection: Connection; network: string; publicKey: PublicKey | null }) {
+function AccountInspectorView({ connection, network, publicKey, initialSearchQuery }: { connection: Connection; network: string; publicKey: PublicKey | null; initialSearchQuery?: string }) {
   const { user } = useUser();
-  const [accountId, setAccountId] = useState('');
+  const [accountId, setAccountId] = useState(initialSearchQuery || '');
   const [accountData, setAccountData] = useState<ParsedAccountData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -423,6 +424,27 @@ function AccountInspectorView({ connection, network, publicKey }: { connection: 
     ].join('\n');
     // Removed debugInfo state and setDebugInfo call since debug panel was removed
   }, [network, connection, publicKey]);
+
+  // Auto-populate with initial search query if provided
+  useEffect(() => {
+    if (initialSearchQuery && initialSearchQuery !== accountId) {
+      setAccountId(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
+
+  // Auto-populate with initial search query if provided
+  useEffect(() => {
+    if (initialSearchQuery && initialSearchQuery !== accountId) {
+      setAccountId(initialSearchQuery);
+      // Auto-search if valid address
+      if (isValidSolanaAddress(initialSearchQuery)) {
+        const validation = validateAccountAddress(initialSearchQuery);
+        if (validation.isValid) {
+          handleSearch();
+        }
+      }
+    }
+  }, [initialSearchQuery]);
 
   // Auto-populate with connected wallet address
   const fillWalletAddress = () => {
@@ -1455,6 +1477,7 @@ function Sidebar({
 }) {
   const navItems = [
     // Core Tools
+    { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="h-4 w-4" />, section: 'core' },
     { id: 'inspector', label: 'Account Inspector', icon: <Search className="h-4 w-4" />, section: 'core' },
     { id: 'builder', label: 'Transaction Builder', icon: <Wrench className="h-4 w-4" />, section: 'core' },
     { id: 'scanner', label: 'Arbitrage Scanner', icon: <TrendingUp className="h-4 w-4" />, section: 'core' },
@@ -1731,6 +1754,7 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
     transaction: any;
     cost: any;
   } | null>(null);
+  const [inspectorSearchQuery, setInspectorSearchQuery] = useState<string>('');
 
   const handleTransactionBuilt = (transaction: any, cost: any) => {
     setTransactionPreview({ transaction, cost });
@@ -1931,9 +1955,23 @@ function MainContent({ activeView, setActiveView, connection, network, publicKey
       <PricingBanner onNavigateToPricing={() => setActiveView('revenue')} />
       <FreeTrialBanner />
       <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        {activeView === 'dashboard' && (
+          <DashboardView 
+            onSearchAddress={(address) => {
+              setInspectorSearchQuery(address);
+              setActiveView('inspector');
+            }}
+            onNavigateToInspector={() => setActiveView('inspector')}
+          />
+        )}
         {activeView === 'inspector' && (
           <div className="flex flex-col h-full">
-            <AccountInspectorView connection={connection} network={network} publicKey={publicKey} />
+            <AccountInspectorView 
+              connection={connection} 
+              network={network} 
+              publicKey={publicKey}
+              initialSearchQuery={inspectorSearchQuery}
+            />
             <div className="mt-6 px-6 pb-6">
               <RecentTransactions featureName="account-inspector" limit={5} />
             </div>
@@ -2067,7 +2105,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<'landing' | 'feature-loader' | 'wallet-connect' | 'disclaimer' | 'tutorial' | 'app'>('landing');
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [previousView, setPreviousView] = useState<string>('');
-  const [activeView, setActiveView] = useState('inspector');
+  const [activeView, setActiveView] = useState('dashboard');
   const [rdConsoleMinimized, setRdConsoleMinimized] = useState(true);
   const [selectedBlockchain, setSelectedBlockchain] = useState<BlockchainType | null>('solana');
   const bleedingEdgeEnabled = process.env.NEXT_PUBLIC_BLEEDING_EDGE_ENABLED === 'true';
@@ -2207,22 +2245,31 @@ function AppContent() {
   // Effect to handle wallet connection completion
   useEffect(() => {
     if (currentScreen === 'wallet-connect' && user) {
-      // User just connected wallet, proceed to disclaimer or app
+      // User just connected wallet
+      // The LoginGate component will handle showing the welcome tutorial
+      // After tutorial is complete, proceed to disclaimer or app
       const disclaimerAgreed = typeof window !== 'undefined' ? localStorage.getItem('sealevel-disclaimer-agreed') : null;
-      if (!disclaimerAgreed) {
-        setCurrentScreen('disclaimer');
-      } else {
-        // Check tutorial and proceed to app
-        let showTutorial = false;
-        try {
-          if (shouldShowTutorial && typeof shouldShowTutorial === 'function') {
-            showTutorial = shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler');
+      const tutorialCompleted = typeof window !== 'undefined' ? localStorage.getItem('sealevel-welcome-tutorial-completed') : null;
+      
+      // Only proceed if tutorial is completed (LoginGate handles showing it)
+      if (tutorialCompleted) {
+        if (!disclaimerAgreed) {
+          setCurrentScreen('disclaimer');
+        } else {
+          // Check if we need to show the feature tutorial
+          let showTutorial = false;
+          try {
+            if (shouldShowTutorial && typeof shouldShowTutorial === 'function') {
+              showTutorial = shouldShowTutorial('accountInspector') || shouldShowTutorial('instructionAssembler');
+            }
+          } catch (tutorialError) {
+            console.error('Error checking tutorial:', tutorialError);
+            showTutorial = false;
           }
-        } catch (tutorialError) {
-          console.error('Error checking tutorial:', tutorialError);
-          showTutorial = false;
+          
+          // Navigate to appropriate screen
+          setCurrentScreen(showTutorial ? 'tutorial' : 'app');
         }
-        setCurrentScreen(showTutorial ? 'tutorial' : 'app');
       }
     }
   }, [currentScreen, user, shouldShowTutorial]);

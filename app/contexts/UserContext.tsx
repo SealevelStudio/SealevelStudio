@@ -21,6 +21,12 @@ export interface Campaign {
   budget: number; // In SOL
 }
 
+interface WalletCreationResult {
+  passphrase: string;
+  privateKey?: string;
+  walletAddress: string;
+}
+
 interface UserContextType {
   user: UserProfile | null;
   isLoading: boolean;
@@ -31,7 +37,7 @@ interface UserContextType {
   updateCredits: (amount: number) => void;
   addCampaign: (campaign: Campaign) => void;
   refreshBalance: (walletAddress?: string) => Promise<void>;
-  createWallet: (email?: string, vanityPrefix?: string) => Promise<void>;
+  createWallet: (email?: string, vanityPrefix?: string) => Promise<WalletCreationResult | null>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -58,8 +64,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         // Refresh balance - pass walletAddress directly to avoid state timing issue
         await refreshBalance(profile.walletAddress);
       } else {
-        // Create a new wallet
-        await createWallet();
+        // Don't auto-create wallet - let LoginGate handle it
+        // This ensures the passphrase modal is shown when wallet is created
+        setIsLoading(false);
+        return;
       }
     } catch (error) {
       console.error('Failed to initialize user:', error);
@@ -75,8 +83,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * - Can receive funds and display balance
    * - ✅ Can sign transactions via /api/wallet/sign endpoint
    * - Note: For production, consider using a proper key management service
+   * 
+   * Returns wallet creation result with passphrase and private key (one-time only)
    */
-  const createWallet = async (email?: string, vanityPrefix?: string) => {
+  const createWallet = async (email?: string, vanityPrefix?: string): Promise<WalletCreationResult | null> => {
     try {
       // Generate a session ID for this user
       let sessionId = localStorage.getItem('session_id');
@@ -110,6 +120,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
       saveProfile(newUser);
       localStorage.setItem('wallet_id', data.wallet.walletId);
+
+      // Return passphrase and private key for one-time display
+      if (data.passphrase) {
+        return {
+          passphrase: data.passphrase,
+          privateKey: data.privateKey, // One-time return - only on creation
+          walletAddress: data.wallet.address,
+        };
+      }
+
+      return null;
     } catch (error) {
       console.error('Failed to create wallet:', error);
       throw error;

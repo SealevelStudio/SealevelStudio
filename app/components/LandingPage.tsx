@@ -130,6 +130,8 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
   // Preload video immediately when component mounts
   useEffect(() => {
     if (videoRef.current) {
+      // Set preload attribute for better loading
+      videoRef.current.preload = 'auto';
       // Force video to start loading
       videoRef.current.load();
       // Try to play (will be muted, so should work)
@@ -402,6 +404,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: (blockchain?: Bloc
                     loop
                     muted
                     playsInline
+                    preload="auto"
                     controls
                     preload="auto"
                     className="absolute inset-0 w-full h-full object-cover"
