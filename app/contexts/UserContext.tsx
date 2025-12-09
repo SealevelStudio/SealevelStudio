@@ -415,15 +415,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
   /**
    * Enter demo mode with a prefunded devnet wallet
    * Uses a known devnet wallet address that should be prefunded
-   * NOTE: Replace this with your actual prefunded devnet wallet address
    */
   const enterDemoMode = async () => {
-    // Demo wallet address - should be prefunded on devnet
-    // TODO: Replace with actual prefunded devnet wallet address
-    // Example format: 'YourPrefundedDevnetWalletAddressHere'
-    // You can fund a devnet wallet using: https://faucet.solana.com
+    // Demo wallet address - prefunded devnet wallet
+    // Generated with: solana-keygen new
+    // Funded via devnet airdrop
     const demoWalletAddress = process.env.NEXT_PUBLIC_DEMO_WALLET_ADDRESS || 
-      '11111111111111111111111111111111'; // Placeholder - replace with real address
+      'DsUKzZewp9F7tiy2JWnWUfateQSWJp6acvD7E32bDFMC'; // Prefunded demo wallet
     
     const demoUser: UserProfile = {
       walletAddress: demoWalletAddress,
