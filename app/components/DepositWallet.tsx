@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Check, QrCode, RefreshCw, ExternalLink, Coins, DollarSign, Sparkles } from 'lucide-react';
+import { Copy, Check, QrCode, RefreshCw, ExternalLink, Coins, DollarSign, Sparkles, Loader2 } from 'lucide-react';
 import { useNetwork } from '../contexts/NetworkContext';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddress, getAccount, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getSealMintAddress, formatSealAmount } from '../lib/seal-token/config';
 
 interface DepositWalletProps {
   walletAddress: string;
-  balance?: number;
+  balance?: number; // SOL balance
   onRefresh?: () => void;
 }
 
@@ -16,6 +19,16 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
   const [selectedFunding, setSelectedFunding] = useState<FundingOption>('SOL');
   const { network } = useNetwork();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+
+  // Get RPC URL based on network
+  const getRpcUrl = () => {
+    if (network === 'mainnet') {
+      return process.env.NEXT_PUBLIC_SOLANA_RPC_MAINNET || 'https://api.mainnet-beta.solana.com';
+    }
+    return process.env.NEXT_PUBLIC_SOLANA_RPC_DEVNET || 'https://api.devnet.solana.com';
+  };
 
   // Generate QR code URL
   useEffect(() => {
@@ -25,6 +38,72 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
     setQrCodeUrl(qrServiceUrl);
   }, [walletAddress, network]);
 
+  // Fetch token balance when funding option changes
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      if (selectedFunding === 'SOL') {
+        // SOL balance is passed as prop, no need to fetch
+        setTokenBalance(balance ?? null);
+        setIsLoadingBalance(false);
+        return;
+      }
+
+      setIsLoadingBalance(true);
+      try {
+        const connection = new Connection(getRpcUrl(), 'confirmed');
+        const walletPubkey = new PublicKey(walletAddress);
+        
+        let mintAddress: PublicKey;
+        let decimals = 9; // Default decimals
+
+        if (selectedFunding === 'USDC') {
+          mintAddress = new PublicKey(
+            network === 'mainnet' 
+              ? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // Mainnet USDC
+              : '4zMMC9srt5Ri5X14GAgX6H8SuHpz2k1jWwzzo4Hq1oNV' // Devnet USDC
+          );
+          decimals = 6; // USDC has 6 decimals
+        } else if (selectedFunding === 'SEAL') {
+          const sealMint = getSealMintAddress();
+          if (!sealMint) {
+            setTokenBalance(0);
+            setIsLoadingBalance(false);
+            return;
+          }
+          mintAddress = sealMint;
+          decimals = 9; // SEAL has 9 decimals
+        } else {
+          setIsLoadingBalance(false);
+          return;
+        }
+
+        const tokenAccount = await getAssociatedTokenAddress(
+          mintAddress,
+          walletPubkey,
+          false,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        try {
+          const account = await getAccount(connection, tokenAccount);
+          const balance = Number(account.amount) / Math.pow(10, decimals);
+          setTokenBalance(balance);
+        } catch (error) {
+          // Token account doesn't exist
+          setTokenBalance(0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch token balance:', error);
+        setTokenBalance(null);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    fetchTokenBalance();
+  }, [selectedFunding, walletAddress, network, balance]);
+
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(walletAddress);
@@ -32,6 +111,63 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleRefresh = async () => {
+    // Refresh SOL balance if callback provided
+    if (onRefresh) {
+      onRefresh();
+    }
+    // Force re-fetch of token balance by clearing it
+    // This will trigger the useEffect to re-fetch
+    if (selectedFunding !== 'SOL') {
+      setTokenBalance(null);
+      setIsLoadingBalance(true);
+      // Manually trigger fetch
+      const connection = new Connection(getRpcUrl(), 'confirmed');
+      const walletPubkey = new PublicKey(walletAddress);
+      
+      let mintAddress: PublicKey;
+      let decimals = 9;
+
+      if (selectedFunding === 'USDC') {
+        mintAddress = new PublicKey(
+          network === 'mainnet' 
+            ? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+            : '4zMMC9srt5Ri5X14GAgX6H8SuHpz2k1jWwzzo4Hq1oNV'
+        );
+        decimals = 6;
+      } else if (selectedFunding === 'SEAL') {
+        const sealMint = getSealMintAddress();
+        if (!sealMint) {
+          setTokenBalance(0);
+          setIsLoadingBalance(false);
+          return;
+        }
+        mintAddress = sealMint;
+        decimals = 9;
+      } else {
+        setIsLoadingBalance(false);
+        return;
+      }
+
+      try {
+        const tokenAccount = await getAssociatedTokenAddress(
+          mintAddress,
+          walletPubkey,
+          false,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        const account = await getAccount(connection, tokenAccount);
+        const balance = Number(account.amount) / Math.pow(10, decimals);
+        setTokenBalance(balance);
+      } catch (error) {
+        setTokenBalance(0);
+      } finally {
+        setIsLoadingBalance(false);
+      }
     }
   };
 
@@ -57,15 +193,14 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
     <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">Fund Wallet</h3>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors"
-            title="Refresh Balance"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          onClick={handleRefresh}
+          disabled={isLoadingBalance}
+          className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+          title="Refresh Balance"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Funding Option Selector */}
@@ -111,16 +246,33 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
       </div>
 
       {/* Balance Display */}
-      {balance !== undefined && (
-        <div className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Current Balance</span>
+      <div className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-400">
+            Current {selectedFunding} Balance
+          </span>
+          {isLoadingBalance ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+              <span className="text-sm text-gray-400">Loading...</span>
+            </div>
+          ) : (
             <span className="text-2xl font-bold text-white">
-              {balance.toFixed(4)} SOL
+              {selectedFunding === 'SOL' 
+                ? `${(balance ?? 0).toFixed(4)} SOL`
+                : selectedFunding === 'USDC'
+                ? `${(tokenBalance ?? 0).toFixed(2)} USDC`
+                : `${formatSealAmount(BigInt(Math.floor((tokenBalance ?? 0) * Math.pow(10, 9))))} SEAL`
+              }
             </span>
-          </div>
+          )}
         </div>
-      )}
+        {selectedFunding !== 'SOL' && (
+          <div className="mt-2 text-xs text-gray-500">
+            SOL Balance: {balance !== undefined ? `${balance.toFixed(4)} SOL` : '---'}
+          </div>
+        )}
+      </div>
 
       {/* Wallet Address */}
       <div className="mb-4">

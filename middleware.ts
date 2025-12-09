@@ -17,11 +17,11 @@ export function middleware(request: NextRequest) {
   // Adjust these directives based on your application's needs
   const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.vercel-insights.com", // unsafe-eval needed for Next.js in dev, unsafe-inline for some third-party scripts
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.vercel-insights.com https://va.vercel-scripts.com", // unsafe-eval needed for Next.js in dev, unsafe-inline for some third-party scripts, va.vercel-scripts.com for Vercel Analytics
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // unsafe-inline needed for styled-jsx
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://*.helius-rpc.com https://api.mainnet-beta.solana.com https://api.devnet.solana.com https://*.vercel-insights.com https://*.vercel.com wss://*.helius-rpc.com wss://api.mainnet-beta.solana.com wss://api.devnet.solana.com",
+    "connect-src 'self' https://*.helius-rpc.com https://api.mainnet-beta.solana.com https://api.devnet.solana.com https://*.vercel-insights.com https://*.vercel.com https://va.vercel-scripts.com wss://*.helius-rpc.com wss://api.mainnet-beta.solana.com wss://api.devnet.solana.com",
     "frame-src 'self' https://*.vercel.com",
     "object-src 'none'",
     "base-uri 'self'",
