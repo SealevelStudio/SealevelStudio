@@ -52,9 +52,47 @@ export function UserProvider({ children }: { children: ReactNode }) {
     initializeUser();
   }, []);
 
+  /**
+   * Enter demo mode with a prefunded devnet wallet
+   * Uses a known devnet wallet address that should be prefunded
+   */
+  const enterDemoMode = async () => {
+    // Demo wallet address - prefunded devnet wallet
+    // Generated with: solana-keygen new
+    // Funded via devnet airdrop
+    const demoWalletAddress = process.env.NEXT_PUBLIC_DEMO_WALLET_ADDRESS || 
+      'DsUKzZewp9F7tiy2JWnWUfateQSWJp6acvD7E32bDFMC'; // Prefunded demo wallet
+    
+    const demoUser: UserProfile = {
+      walletAddress: demoWalletAddress,
+      walletId: 'demo-wallet-' + Date.now(),
+      balance: 10.0, // Default demo balance (will be updated from actual balance)
+      isTwitterLinked: false,
+      isTelegramLinked: false,
+      credits: 1000, // Demo credits
+      campaigns: []
+    };
+
+    setUser(demoUser);
+    saveProfile(demoUser);
+    localStorage.setItem('wallet_id', demoUser.walletId);
+    localStorage.setItem('demo_mode', 'true');
+    
+    // Try to fetch actual balance from devnet
+    try {
+      await refreshBalance(demoWalletAddress);
+    } catch (error) {
+      console.warn('Could not fetch demo wallet balance, using default:', error);
+      // Keep the default balance if fetch fails
+    }
+  };
+
   const initializeUser = async () => {
     setIsLoading(true);
     try {
+      // Check if demo mode is active
+      const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+      
       // Check if user has a wallet in localStorage
       const storedWalletId = localStorage.getItem('wallet_id');
       const storedProfile = localStorage.getItem('user_profile');
@@ -64,6 +102,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setUser(profile);
         // Refresh balance - pass walletAddress directly to avoid state timing issue
         await refreshBalance(profile.walletAddress);
+      } else if (isDemoMode) {
+        // If demo mode is active but no profile, re-enter demo mode
+        await enterDemoMode();
       } else {
         // Don't auto-create wallet - let LoginGate handle it
         // This ensures the passphrase modal is shown when wallet is created
@@ -410,41 +451,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const updated = { ...user, campaigns: [...user.campaigns, campaign] };
     saveProfile(updated);
-  };
-
-  /**
-   * Enter demo mode with a prefunded devnet wallet
-   * Uses a known devnet wallet address that should be prefunded
-   */
-  const enterDemoMode = async () => {
-    // Demo wallet address - prefunded devnet wallet
-    // Generated with: solana-keygen new
-    // Funded via devnet airdrop
-    const demoWalletAddress = process.env.NEXT_PUBLIC_DEMO_WALLET_ADDRESS || 
-      'DsUKzZewp9F7tiy2JWnWUfateQSWJp6acvD7E32bDFMC'; // Prefunded demo wallet
-    
-    const demoUser: UserProfile = {
-      walletAddress: demoWalletAddress,
-      walletId: 'demo-wallet-' + Date.now(),
-      balance: 10.0, // Default demo balance (will be updated from actual balance)
-      isTwitterLinked: false,
-      isTelegramLinked: false,
-      credits: 1000, // Demo credits
-      campaigns: []
-    };
-
-    setUser(demoUser);
-    saveProfile(demoUser);
-    localStorage.setItem('wallet_id', demoUser.walletId);
-    localStorage.setItem('demo_mode', 'true');
-    
-    // Try to fetch actual balance from devnet
-    try {
-      await refreshBalance(demoWalletAddress);
-    } catch (error) {
-      console.warn('Could not fetch demo wallet balance, using default:', error);
-      // Keep the default balance if fetch fails
-    }
   };
 
   return (

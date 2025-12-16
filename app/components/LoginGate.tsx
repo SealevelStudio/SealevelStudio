@@ -48,7 +48,9 @@ export function LoginGate({ children }: LoginGateProps) {
 
   // If user is logged in or hot wallet connected, show children
   // BUT if we just created a wallet and need to show passphrase or tutorial, show modals first
-  if ((user || (connected && publicKey)) && !walletCreationResult && !showWelcomeTutorial) {
+  // Also check for demo mode
+  const isDemoModeActive = localStorage.getItem('demo_mode') === 'true';
+  if ((user || (connected && publicKey) || isDemoModeActive) && !walletCreationResult && !showWelcomeTutorial) {
     return <>{children}</>;
   }
 
@@ -181,11 +183,20 @@ export function LoginGate({ children }: LoginGateProps) {
 
   const handleEnterDemoMode = async () => {
     try {
+      setIsCreating(true);
+      console.log('Entering demo mode...');
       await enterDemoMode();
+      console.log('Demo mode entered, user should be set now');
       setIsDemoMode(true);
+      // Small delay to ensure state propagates
+      await new Promise(resolve => setTimeout(resolve, 200));
+      setIsCreating(false);
+      // Force page reload to ensure clean state
+      window.location.reload();
     } catch (error) {
       console.error('Failed to enter demo mode:', error);
       alert('Failed to enter demo mode. Please try again.');
+      setIsCreating(false);
     }
   };
 
