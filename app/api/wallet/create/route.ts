@@ -39,7 +39,16 @@ export async function POST(request: NextRequest) {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const body = await request.json().catch(() => ({}));
+    let body;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body', success: false },
+        { status: 400 }
+      );
+    }
+    
     const { userId, sessionId, email, skipEmailVerification, vanityPrefix } = body;
 
     // Check if wallet already exists for email or session

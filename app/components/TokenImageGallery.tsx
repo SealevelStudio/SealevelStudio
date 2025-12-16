@@ -15,8 +15,10 @@ import {
   TokenImageMetadata,
   optimizeForSocialMedia 
 } from '../lib/token-images/storage';
+import { useToast } from './ui/Toast';
 
 export function TokenImageGallery() {
+  const toast = useToast();
   const [images, setImages] = useState<TokenImageMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<TokenImageMetadata | null>(null);
@@ -90,10 +92,10 @@ export function TokenImageGallery() {
           platforms: [platform],
         }),
       });
-      alert(`Posted to ${platform}!`);
+      toast.success(`Posted to ${platform}!`);
     } catch (error) {
       console.error(`Failed to post to ${platform}:`, error);
-      alert(`Failed to post to ${platform}`);
+      toast.error(`Failed to post to ${platform}`);
     }
   };
 

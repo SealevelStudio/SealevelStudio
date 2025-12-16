@@ -17,6 +17,7 @@ import {
   Coins
 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
+import { useToast } from './ui/Toast';
 
 // Campaign Moods/Classes
 type Mood = 'fomo' | 'fear' | 'greed' | 'build' | 'promote';
@@ -36,6 +37,7 @@ interface MarketingBotProps {
 
 export function MarketingBot({ tokenSymbol = 'TOKEN', tokenName = 'My Token' }: MarketingBotProps) {
   const { user, updateCredits } = useUser();
+  const toast = useToast();
   const [selectedMood, setSelectedMood] = useState<Mood>('promote');
   const [isRunning, setIsRunning] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState('');
@@ -96,13 +98,13 @@ export function MarketingBot({ tokenSymbol = 'TOKEN', tokenName = 'My Token' }: 
   const generateAndPost = useCallback(async () => {
     if (!user || user.credits < COST_PER_POST) {
       setIsRunning(false);
-      alert("Insufficient credits! Please top up to continue campaign.");
+      toast.warning("Insufficient credits! Please top up to continue campaign.");
       return;
     }
 
     if (!twitterReady && !telegramReady) {
       setIsRunning(false);
-      alert("No platforms configured! Please connect Twitter or Telegram first.");
+      toast.warning("No platforms configured! Please connect Twitter or Telegram first.");
       return;
     }
 

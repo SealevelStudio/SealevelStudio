@@ -39,9 +39,14 @@ import { executeArbitrage, validateOpportunity, calculateSafeSlippage, Execution
 import { getUserMessage } from '../lib/error-handling';
 import { AnimatedInput } from './ui/AnimatedInput';
 import { AnimatedSelect } from './ui/AnimatedSelect';
-import { Arbitrage3DVisualization } from './charts/Arbitrage3DVisualization';
+import dynamic from 'next/dynamic';
+const Arbitrage3DVisualization = dynamic(() => import('./charts/Arbitrage3DVisualization').then(mod => ({ default: mod.Arbitrage3DVisualization })), {
+  loading: () => <div className="flex items-center justify-center h-64"><div className="text-gray-400">Loading 3D visualization...</div></div>,
+  ssr: false
+});
 import { useArbitrageAI } from '../hooks/useArbitrageAI';
 import { ArbitrageScanningResults } from '../lib/arbitrage/arbitrage-result-schema';
+import { useToast } from './ui/Toast';
 
 interface ArbitrageScannerProps {
   onBuildTransaction?: (opportunity: ArbitrageOpportunity) => void;
@@ -52,6 +57,7 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
   const { connection } = useConnection();
   const wallet = useWallet();
   const { trackFeatureUsage, checkFeatureAccess, getTrialStatus } = useUsageTracking();
+  const toast = useToast();
   const [executing, setExecuting] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<{ success: boolean; message: string } | null>(null);
   const [scanner] = useState(() => new PoolScanner());
@@ -89,7 +95,7 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
     // Check if user can use scanner (free trial or subscription)
     const access = checkFeatureAccess('scanner_scan');
     if (!access.allowed) {
-      alert(access.reason || 'Scanner scan not available. Please check your subscription or free trial status.');
+      toast.warning(access.reason || 'Scanner scan not available. Please check your subscription or free trial status.');
       return;
     }
 
@@ -311,7 +317,7 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
       console.log('Training data retained:', trainingData);
       
       // Show feedback (could add a toast here, but alert is quick for now)
-      alert('Path context saved for AI training!');
+      toast.success('Path context saved for AI training!');
     } catch (e) {
       console.error('Failed to save training data', e);
     }
@@ -319,7 +325,7 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
 
   const handleAIAnalysis = useCallback(async () => {
     if (opportunities.length === 0) {
-      alert('No opportunities to analyze. Please scan first.');
+      toast.warning('No opportunities to analyze. Please scan first.');
       return;
     }
 
@@ -328,7 +334,7 @@ export function ArbitrageScanner({ onBuildTransaction, onBack }: ArbitrageScanne
       setAiResults(results);
       setShowAIResults(true);
     } else if (aiError) {
-      alert(`AI Analysis Error: ${aiError}`);
+      toast.error(`AI Analysis Error: ${aiError}`);
     }
   }, [opportunities, analyzeScan, aiError]);
 

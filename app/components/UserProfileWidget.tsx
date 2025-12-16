@@ -5,9 +5,12 @@ import { DepositWallet } from './DepositWallet';
 import { Settings as SettingsComponent } from './Settings';
 import { CopyButton } from './CopyButton';
 import { WalletPassphraseModal } from './WalletPassphraseModal';
+import { SkeletonCard } from './ui/Skeleton';
+import { useToast } from './ui/Toast';
 
 export function UserProfileWidget() {
   const { user, isLoading, linkTwitter, linkTelegram, logout, refreshBalance, createWallet } = useUser();
+  const toast = useToast();
   const [isLinkingTwitter, setIsLinkingTwitter] = useState(false);
   const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
@@ -36,19 +39,12 @@ export function UserProfileWidget() {
   }, [showDropdown]);
 
   if (isLoading) {
-    return (
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <div className="flex items-center justify-center space-x-3">
-          <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-          <span className="text-sm text-gray-400">Loading wallet...</span>
-        </div>
-      </div>
-    );
+    return <SkeletonCard />;
   }
 
   const handleGenerateWallet = async () => {
     if (!email || !email.includes('@')) {
-      alert('Please enter a valid email address');
+      toast.warning('Please enter a valid email address');
       return;
     }
 
@@ -67,7 +63,7 @@ export function UserProfileWidget() {
       }
     } catch (error) {
       console.error('Failed to create wallet:', error);
-      alert('Failed to create wallet. Please try again.');
+      toast.error('Failed to create wallet. Please try again.');
     } finally {
       setIsCreatingWallet(false);
     }

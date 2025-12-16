@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
 import { PriceChart } from './charts/PriceChart';
 import { AnalyticsDashboard } from './charts/AnalyticsDashboard';
@@ -10,6 +10,8 @@ import { useConnection } from '@solana/wallet-adapter-react';
 import { PoolScanner } from '../lib/pools/scanner';
 import { ArbitrageDetector } from '../lib/pools/arbitrage';
 import { DEFAULT_SCANNER_CONFIG } from '../lib/pools/types';
+import { INTERVALS } from '../lib/constants/intervals';
+import { SkeletonChart } from './ui/Skeleton';
 
 interface ChartsViewProps {
   onBack?: () => void;
@@ -39,15 +41,26 @@ export function ChartsView({ onBack }: ChartsViewProps) {
         
         const result = await response.json();
         if (result.success && result.data) {
-          // Convert API data to chart format
-          const formattedData = result.data.map((point: any) => ({
+          // Convert API data to chart format with proper typing
+          interface PriceDataPoint {
+            timestamp: string | number;
+            price: number;
+            volume?: number;
+            high?: number;
+            low?: number;
+            open?: number;
+            close?: number;
+          }
+          
+          // Memoize the data transformation
+          const formattedData = result.data.map((point: PriceDataPoint) => ({
             timestamp: new Date(point.timestamp),
             price: point.price,
-            volume: point.volume,
-            high: point.high,
-            low: point.low,
-            open: point.open,
-            close: point.close,
+            volume: point.volume ?? 0,
+            high: point.high ?? point.price,
+            low: point.low ?? point.price,
+            open: point.open ?? point.price,
+            close: point.close ?? point.price,
           }));
           
           setPriceData(formattedData);
@@ -65,29 +78,57 @@ export function ChartsView({ onBack }: ChartsViewProps) {
 
     fetchPriceData();
     
-    // Refresh every 60 seconds for real-time updates
-    const interval = setInterval(fetchPriceData, 60000);
+    // Refresh at configured interval for real-time updates
+    const interval = setInterval(fetchPriceData, INTERVALS.PRICE_REFRESH_MS);
     return () => clearInterval(interval);
   }, [selectedToken, timeframe]);
 
   // Fetch arbitrage opportunities
   useEffect(() => {
+    let cancelled = false;
+    
     const fetchArbitrage = async () => {
       try {
         const scanner = new PoolScanner();
         const state = await scanner.scan(connection);
         const detector = new ArbitrageDetector(state.pools, DEFAULT_SCANNER_CONFIG, connection);
         const opportunities = await detector.detectOpportunities();
-        setArbitrageOpportunities(opportunities.slice(0, 10)); // Top 10
+        
+        // Only update state if component is still mounted
+        if (!cancelled) {
+          setArbitrageOpportunities(opportunities.slice(0, 10)); // Top 10
+        }
       } catch (error) {
-        console.error('Failed to fetch arbitrage opportunities:', error);
+        if (!cancelled) {
+          console.error('Failed to fetch arbitrage opportunities:', error);
+        }
       }
     };
 
     if (activeChart === 'arbitrage') {
       fetchArbitrage();
     }
+    
+    return () => {
+      cancelled = true;
+    };
   }, [activeChart, connection]);
+
+  // Memoize formatted price data to avoid recalculation
+  const memoizedPriceData = useMemo(() => {
+    return priceData;
+  }, [priceData]);
+
+  // Memoize top arbitrage opportunities
+  const memoizedTopOpportunities = useMemo(() => {
+    return arbitrageOpportunities.slice(0, 10);
+  }, [arbitrageOpportunities]);
+
+  // Memoize timeframe options
+  const timeframeOptions = useMemo(() => ['1h', '24h', '7d', '30d'] as const, []);
+
+  // Memoize chart type options
+  const chartTypes = useMemo(() => ['price', 'analytics', 'transaction', 'arbitrage'] as const, []);
 
   // Sample analytics data
   const analyticsData = {
@@ -219,7 +260,7 @@ export function ChartsView({ onBack }: ChartsViewProps) {
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
         {/* Chart Selector */}
         <div className="flex gap-2 mb-6 border-b border-gray-700">
-          {(['price', 'analytics', 'transaction', 'arbitrage'] as const).map(chart => (
+          {chartTypes.map(chart => (
             <button
               key={chart}
               onClick={() => setActiveChart(chart)}
@@ -268,7 +309,7 @@ export function ChartsView({ onBack }: ChartsViewProps) {
                 <div className="flex items-center gap-3">
                   <label className="text-sm font-medium text-gray-300">Timeframe:</label>
                   <div className="flex gap-2">
-                    {(['1h', '24h', '7d', '30d'] as const).map((tf) => (
+                    {timeframeOptions.map((tf) => (
                       <button
                         key={tf}
                         onClick={() => setTimeframe(tf)}
@@ -348,7 +389,7 @@ export function ChartsView({ onBack }: ChartsViewProps) {
         {/* Arbitrage Visualization */}
         {activeChart === 'arbitrage' && (
           <ArbitrageVisualization
-            opportunities={arbitrageOpportunities}
+            opportunities={memoizedTopOpportunities}
             selectedOpportunity={selectedOpportunity}
             onSelectOpportunity={setSelectedOpportunity}
           />

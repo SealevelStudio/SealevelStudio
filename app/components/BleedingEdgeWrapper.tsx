@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import WebGPUScene from "./WebGPUScene";
+import dynamic from 'next/dynamic';
+const WebGPUScene = dynamic(() => import('./WebGPUScene'), {
+  loading: () => <div className="flex items-center justify-center h-64"><div className="text-gray-400">Loading 3D scene...</div></div>,
+  ssr: false
+});
 import { CommandBar } from "./CommandBar";
 import { GenerativeUI } from "./GenerativeUI";
 

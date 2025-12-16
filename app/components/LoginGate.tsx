@@ -8,6 +8,7 @@ import { CopyButton } from './CopyButton';
 import { WalletPassphraseModal } from './WalletPassphraseModal';
 import { WalletEducationModal } from './WalletEducationModal';
 import { WelcomeTutorialModal } from './WelcomeTutorialModal';
+import { useToast } from './ui/Toast';
 
 interface LoginGateProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ interface LoginGateProps {
 export function LoginGate({ children }: LoginGateProps) {
   const { user, isLoading, createWallet, enterDemoMode } = useUser();
   const { publicKey, connect, disconnect, connecting, connected } = useWallet();
+  const toast = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [email, setEmail] = useState('');
   const [emailVerificationToken, setEmailVerificationToken] = useState('');
@@ -27,11 +29,15 @@ export function LoginGate({ children }: LoginGateProps) {
   const [walletMode, setWalletMode] = useState<'custodial' | 'hot' | null>(null);
   const [walletCreationResult, setWalletCreationResult] = useState<{ passphrase: string; privateKey?: string; walletAddress: string } | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isDemoModeActive, setIsDemoModeActive] = useState(false);
 
-  // Check if demo mode is active
+  // Check if demo mode is active (client-side only)
   useEffect(() => {
-    const demoMode = localStorage.getItem('demo_mode') === 'true';
-    setIsDemoMode(demoMode);
+    if (typeof window !== 'undefined') {
+      const demoMode = localStorage.getItem('demo_mode') === 'true';
+      setIsDemoMode(demoMode);
+      setIsDemoModeActive(demoMode);
+    }
   }, []);
 
   // Show loading state while checking for user
@@ -49,7 +55,6 @@ export function LoginGate({ children }: LoginGateProps) {
   // If user is logged in or hot wallet connected, show children
   // BUT if we just created a wallet and need to show passphrase or tutorial, show modals first
   // Also check for demo mode
-  const isDemoModeActive = localStorage.getItem('demo_mode') === 'true';
   if ((user || (connected && publicKey) || isDemoModeActive) && !walletCreationResult && !showWelcomeTutorial) {
     return <>{children}</>;
   }
@@ -57,7 +62,7 @@ export function LoginGate({ children }: LoginGateProps) {
   // Handle email submission and verification
   const handleEmailSubmit = async () => {
     if (!email || !email.includes('@')) {
-      alert('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
       return;
     }
 
@@ -84,7 +89,7 @@ export function LoginGate({ children }: LoginGateProps) {
       }
     } catch (error) {
       console.error('Failed to send verification email:', error);
-      alert(error instanceof Error ? error.message : 'Failed to send verification email. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to send verification email. Please try again.');
     } finally {
       setIsCreating(false);
     }
@@ -93,7 +98,7 @@ export function LoginGate({ children }: LoginGateProps) {
   // Verify email token
   const handleVerifyEmail = async () => {
     if (!emailVerificationToken.trim()) {
-      alert('Please enter the verification code from your email');
+      toast.warning('Please enter the verification code from your email');
       return;
     }
 
@@ -117,7 +122,7 @@ export function LoginGate({ children }: LoginGateProps) {
       await handleCreateWallet();
     } catch (error) {
       console.error('Failed to verify email:', error);
-      alert(error instanceof Error ? error.message : 'Invalid verification code. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Invalid verification code. Please try again.');
     } finally {
       setIsCreating(false);
     }
@@ -128,12 +133,12 @@ export function LoginGate({ children }: LoginGateProps) {
     if (isCreating) return;
 
     if (!email || !email.includes('@')) {
-      alert('Email is required for wallet recovery');
+      toast.warning('Email is required for wallet recovery');
       return;
     }
 
     if (!emailVerified) {
-      alert('Please verify your email first');
+      toast.warning('Please verify your email first');
       return;
     }
 
@@ -151,7 +156,7 @@ export function LoginGate({ children }: LoginGateProps) {
       }
     } catch (error) {
       console.error('Failed to create wallet:', error);
-      alert(error instanceof Error ? error.message : 'Failed to create wallet. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to create wallet. Please try again.');
     } finally {
       setIsCreating(false);
     }
@@ -162,7 +167,7 @@ export function LoginGate({ children }: LoginGateProps) {
       await connect();
     } catch (error) {
       console.error('Failed to connect wallet:', error);
-      alert('Failed to connect wallet. Please try again.');
+      toast.error('Failed to connect wallet. Please try again.');
     }
   };
 
@@ -184,18 +189,19 @@ export function LoginGate({ children }: LoginGateProps) {
   const handleEnterDemoMode = async () => {
     try {
       setIsCreating(true);
-      console.log('Entering demo mode...');
       await enterDemoMode();
-      console.log('Demo mode entered, user should be set now');
       setIsDemoMode(true);
+      setIsDemoModeActive(true);
       // Small delay to ensure state propagates
       await new Promise(resolve => setTimeout(resolve, 200));
       setIsCreating(false);
       // Force page reload to ensure clean state
-      window.location.reload();
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Failed to enter demo mode:', error);
-      alert('Failed to enter demo mode. Please try again.');
+      toast.error('Failed to enter demo mode. Please try again.');
       setIsCreating(false);
     }
   };

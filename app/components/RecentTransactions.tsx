@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { getRecentTransactions } from '../lib/transactions/logger';
 import { ExternalLink, Loader2, RefreshCw, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { SkeletonTable } from './ui/Skeleton';
 
 interface RecentTransactionsProps {
   featureName?: string;
@@ -115,10 +116,7 @@ export function RecentTransactions({
   if (isLoading) {
     return (
       <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <div className="flex items-center justify-center space-x-3">
-          <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-          <span className="text-sm text-gray-400">Loading transactions...</span>
-        </div>
+        <SkeletonTable rows={5} cols={4} />
       </div>
     );
   }

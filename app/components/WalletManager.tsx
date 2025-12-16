@@ -24,6 +24,7 @@ import {
 import { useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { walletRegistry, ManagedWallet, WalletGroup } from '../lib/wallet-manager';
+import { useToast } from './ui/Toast';
 
 interface WalletManagerProps {
   onBack?: () => void;
@@ -31,6 +32,7 @@ interface WalletManagerProps {
 
 export function WalletManager({ onBack }: WalletManagerProps) {
   const { connection } = useConnection();
+  const toast = useToast();
   const [wallets, setWallets] = useState<ManagedWallet[]>([]);
   const [groups, setGroups] = useState<WalletGroup[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -120,7 +122,7 @@ export function WalletManager({ onBack }: WalletManagerProps) {
       loadWallets();
       setShowImport(false);
     } catch (error) {
-      alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -140,7 +142,7 @@ export function WalletManager({ onBack }: WalletManagerProps) {
       URL.revokeObjectURL(url);
       setShowExport(false);
     } catch (error) {
-      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

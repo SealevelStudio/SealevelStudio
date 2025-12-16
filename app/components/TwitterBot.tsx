@@ -29,6 +29,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { RiskAcknowledgement } from './compliance/RiskAcknowledgement';
 import { useRiskConsent } from '../hooks/useRiskConsent';
 import { SEAL_TOKEN_ECONOMICS } from '../lib/seal-token/config';
+import { AlertMessage } from './ui/AlertMessage';
 
 interface TwitterPost {
   id: string;
@@ -429,29 +430,21 @@ export function TwitterBot({ onBack }: TwitterBotProps) {
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-8">
         {/* Error/Success Messages */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-red-400 font-medium">Error</p>
-              <p className="text-sm text-gray-300 mt-1">{error}</p>
-            </div>
-            <button onClick={() => setError(null)}>
-              <X size={16} className="text-gray-400 hover:text-white" />
-            </button>
-          </div>
+          <AlertMessage
+            type="error"
+            title="Error"
+            message={error}
+            onDismiss={() => setError(null)}
+          />
         )}
 
         {success && (
-          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-green-400 font-medium">Success</p>
-              <p className="text-sm text-gray-300 mt-1">{success}</p>
-            </div>
-            <button onClick={() => setSuccess(null)}>
-              <X size={16} className="text-gray-400 hover:text-white" />
-            </button>
-          </div>
+          <AlertMessage
+            type="success"
+            title="Success"
+            message={success}
+            onDismiss={() => setSuccess(null)}
+          />
         )}
 
         {!isAuthenticated ? (

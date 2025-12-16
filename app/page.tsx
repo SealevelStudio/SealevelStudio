@@ -9,7 +9,10 @@ import WalletButton from './components/WalletButton';
 import { UnifiedTransactionBuilder } from './components/UnifiedTransactionBuilder';
 import { TransactionPreview } from './components/TransactionPreview';
 import { ClientOnly } from './components/ClientOnly';
-import { ArbitrageScanner } from './components/ArbitrageScanner';
+const ArbitrageScanner = dynamic(() => import('./components/ArbitrageScanner').then(mod => ({ default: mod.ArbitrageScanner })), {
+  loading: () => <div className="flex items-center justify-center h-64"><div className="text-gray-400">Loading scanner...</div></div>,
+  ssr: false
+});
 import { FreeTrialBanner } from './components/FreeTrialBanner';
 import { UnifiedAIAgents } from './components/UnifiedAIAgents';
 import { useNetwork } from './contexts/NetworkContext';
@@ -20,7 +23,10 @@ import { LandingPage, BlockchainType } from './components/LandingPage';
 import { PremiumServices } from './components/PremiumServices';
 import { Web2Tools } from './components/Web2Tools';
 import { WalletManager } from './components/WalletManager';
-import { AdvancedRAndDConsole } from './components/AdvancedR&DConsole';
+const AdvancedRAndDConsole = dynamic(() => import('./components/AdvancedR&DConsole').then(mod => ({ default: mod.AdvancedRAndDConsole })), {
+  loading: () => <div className="flex items-center justify-center h-64"><div className="text-gray-400">Loading console...</div></div>,
+  ssr: false
+});
 import { CybersecurityFinder } from './components/CybersecurityFinder';
 import { SecurityAI } from './components/SecurityAI';
 import { CybersecurityDashboard } from './components/CybersecurityDashboard';
@@ -41,7 +47,11 @@ import { ToolsHub } from './components/ToolsHub';
 import { TwitterBot } from './components/TwitterBot';
 import { SubstackBot } from './components/SubstackBot';
 import { TelegramBot } from './components/TelegramBot';
-import { ChartsView } from './components/ChartsView';
+import dynamic from 'next/dynamic';
+const ChartsView = dynamic(() => import('./components/ChartsView').then(mod => ({ default: mod.ChartsView })), {
+  loading: () => <div className="flex items-center justify-center h-64"><div className="text-gray-400">Loading charts...</div></div>,
+  ssr: false
+});
 import { DisclaimerAgreement } from './components/DisclaimerAgreement';
 import { DeveloperCommunity } from './components/DeveloperCommunity';
 import { DeveloperDashboard } from './components/DeveloperDashboard';
@@ -2172,7 +2182,8 @@ function AppContent() {
       // Set blockchain first
       const targetBlockchain = blockchain || 'solana';
       if (targetBlockchain !== 'polkadot' && targetBlockchain !== 'solana') {
-        alert(`${targetBlockchain.charAt(0).toUpperCase() + targetBlockchain.slice(1)} support is coming soon! For now, you can use Polkadot or Solana which have full feature support.`);
+        // Note: Toast notification should be shown by the component
+        console.info(`${targetBlockchain.charAt(0).toUpperCase() + targetBlockchain.slice(1)} support is coming soon! For now, you can use Polkadot or Solana which have full feature support.`);
         setSelectedBlockchain('solana');
       } else {
         setSelectedBlockchain(targetBlockchain);
@@ -2187,7 +2198,8 @@ function AppContent() {
       console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       
       // Show user-friendly error message
-      alert('Something went wrong. Please try again or refresh the page.');
+      // Note: Toast notification should be shown by the component
+      console.error('Something went wrong. Please try again or refresh the page.');
       
       // Fallback: try to navigate to app
       try {

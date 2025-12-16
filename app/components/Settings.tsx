@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useNetwork } from '../contexts/NetworkContext';
+import { useToast } from './ui/Toast';
 
 interface SettingsProps {
   onClose?: () => void;
@@ -72,6 +73,7 @@ interface AppSettings {
 export function Settings({ onClose }: SettingsProps) {
   const { user } = useUser();
   const { network } = useNetwork();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'transaction' | 'alerts' | 'wallet' | 'app'>('transaction');
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showRecoveryPhrase, setShowRecoveryPhrase] = useState(false);
@@ -136,7 +138,7 @@ export function Settings({ onClose }: SettingsProps) {
 
   const fetchWalletKeys = async () => {
     if (!user?.walletId) {
-      alert('No wallet found. Please create a wallet first.');
+      toast.warning('No wallet found. Please create a wallet first.');
       return;
     }
 
@@ -151,7 +153,7 @@ export function Settings({ onClose }: SettingsProps) {
       const data = await response.json();
       
       if (!data.success) {
-        alert(data.error || 'Failed to export wallet');
+        toast.error(data.error || 'Failed to export wallet');
         return;
       }
 
@@ -163,7 +165,7 @@ export function Settings({ onClose }: SettingsProps) {
       }
     } catch (error) {
       console.error('Failed to fetch wallet keys:', error);
-      alert('Failed to export wallet. Please try again.');
+      toast.error('Failed to export wallet. Please try again.');
     } finally {
       setLoading(false);
       setPassword('');

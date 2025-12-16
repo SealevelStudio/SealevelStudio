@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Layers, TrendingUp, MessageSquare, Wallet, Zap, ArrowRight, ArrowLeft, Clock, Sparkles } from 'lucide-react';
+import { useToast } from './ui/Toast';
 
 interface ServiceCardProps {
   title: string;
@@ -22,9 +23,10 @@ interface ServiceCardProps {
   features: string[];
   available?: boolean;
   onNavigate?: () => void;
+  onComingSoon?: (title: string) => void;
 }
 
-function ServiceCard({ title, description, icon, cost, link, features, available = false, onNavigate }: ServiceCardProps) {
+function ServiceCard({ title, description, icon, cost, link, features, available = false, onNavigate, onComingSoon }: ServiceCardProps) {
   const handleClick = () => {
     if (available && onNavigate) {
       onNavigate();
@@ -32,7 +34,7 @@ function ServiceCard({ title, description, icon, cost, link, features, available
       // TODO: Navigate to service page when implemented
       console.log(`Navigate to ${link}`);
     } else {
-      alert(`${title} is coming soon! This feature will be available in a future update.`);
+      onComingSoon?.(title);
     }
   };
 
@@ -101,6 +103,12 @@ interface PremiumServicesProps {
 }
 
 export function PremiumServices({ onBack, onNavigateToWalletManager, onNavigateToBundler, onNavigateToAdvertising, onNavigateToServiceBot }: PremiumServicesProps) {
+  const toast = useToast();
+  
+  const handleComingSoon = (title: string) => {
+    toast.info(`${title} is coming soon! This feature will be available in a future update.`);
+  };
+  
   const services = [
     {
       title: 'AI Service Bot',
@@ -199,6 +207,7 @@ export function PremiumServices({ onBack, onNavigateToWalletManager, onNavigateT
             <ServiceCard 
               key={service.title} 
               {...service}
+              onComingSoon={handleComingSoon}
               onNavigate={
                 service.title === 'AI Service Bot' ? onNavigateToServiceBot :
                 service.title === 'Wallet Manager' ? onNavigateToWalletManager :

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, TrendingUp, Newspaper, DollarSign, Crown, Trophy, Star, ExternalLink, Copy, CheckCircle, X, Sparkles } from 'lucide-react';
 import { CopyButton } from './CopyButton';
 
@@ -68,6 +68,11 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ onSearchAddress, onNavigateToInspector }: DashboardViewProps) {
+  // Memoize example addresses to avoid recreation on every render
+  const memoizedExampleAddresses = useMemo(() => EXAMPLE_ADDRESSES, []);
+  const memoizedLeaderboard = useMemo(() => MOCK_LEADERBOARD, []);
+  const memoizedNews = useMemo(() => MOCK_NEWS, []);
+  const memoizedFeatures = useMemo(() => ['Account Inspector', 'Transaction Builder', 'Arbitrage Scanner', 'AI Agents', 'API Access', 'Priority Support'], []);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddressExamples, setShowAddressExamples] = useState(false);
 

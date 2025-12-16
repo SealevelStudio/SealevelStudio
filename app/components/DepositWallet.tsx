@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Copy, Check, QrCode, RefreshCw, ExternalLink, Coins, DollarSign, Sparkles, Loader2 } from 'lucide-react';
 import { useNetwork } from '../contexts/NetworkContext';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress, getAccount, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { getSealMintAddress, formatSealAmount } from '../lib/seal-token/config';
+import { useDebounce } from '../hooks/useDebounce';
+import { INTERVALS } from '../lib/constants/intervals';
+import { SkeletonBalance } from './ui/Skeleton';
 
 interface DepositWalletProps {
   walletAddress: string;
@@ -38,44 +41,61 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
     setQrCodeUrl(qrServiceUrl);
   }, [walletAddress, network]);
 
+  // Memoize mint address and decimals to avoid recalculation
+  const tokenConfig = useMemo(() => {
+    if (selectedFunding === 'SOL') return null;
+    
+    if (selectedFunding === 'USDC') {
+      return {
+        mintAddress: network === 'mainnet' 
+          ? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // Mainnet USDC
+          : '4zMMC9srt5Ri5X14GAgX6H8SuHpz2k1jWwzzo4Hq1oNV', // Devnet USDC
+        decimals: 6,
+      };
+    } else if (selectedFunding === 'SEAL') {
+      const sealMint = getSealMintAddress();
+      if (!sealMint) return null;
+      return {
+        mintAddress: sealMint,
+        decimals: 9,
+      };
+    }
+    return null;
+  }, [selectedFunding, network]);
+
+  // Debounce funding option changes to prevent rapid API calls
+  const debouncedFunding = useDebounce(selectedFunding, INTERVALS.BALANCE_FETCH_DEBOUNCE_MS);
+
   // Fetch token balance when funding option changes
   useEffect(() => {
+    let cancelled = false;
+    
     const fetchTokenBalance = async () => {
-      if (selectedFunding === 'SOL') {
+      if (debouncedFunding === 'SOL') {
         // SOL balance is passed as prop, no need to fetch
-        setTokenBalance(balance ?? null);
-        setIsLoadingBalance(false);
+        if (!cancelled) {
+          setTokenBalance(balance ?? null);
+          setIsLoadingBalance(false);
+        }
         return;
       }
 
-      setIsLoadingBalance(true);
+      if (!tokenConfig) {
+        if (!cancelled) {
+          setTokenBalance(0);
+          setIsLoadingBalance(false);
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setIsLoadingBalance(true);
+      }
+
       try {
         const connection = new Connection(getRpcUrl(), 'confirmed');
         const walletPubkey = new PublicKey(walletAddress);
-        
-        let mintAddress: PublicKey;
-        let decimals = 9; // Default decimals
-
-        if (selectedFunding === 'USDC') {
-          mintAddress = new PublicKey(
-            network === 'mainnet' 
-              ? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // Mainnet USDC
-              : '4zMMC9srt5Ri5X14GAgX6H8SuHpz2k1jWwzzo4Hq1oNV' // Devnet USDC
-          );
-          decimals = 6; // USDC has 6 decimals
-        } else if (selectedFunding === 'SEAL') {
-          const sealMint = getSealMintAddress();
-          if (!sealMint) {
-            setTokenBalance(0);
-            setIsLoadingBalance(false);
-            return;
-          }
-          mintAddress = sealMint;
-          decimals = 9; // SEAL has 9 decimals
-        } else {
-          setIsLoadingBalance(false);
-          return;
-        }
+        const mintAddress = new PublicKey(tokenConfig.mintAddress);
 
         const tokenAccount = await getAssociatedTokenAddress(
           mintAddress,
@@ -87,22 +107,34 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
 
         try {
           const account = await getAccount(connection, tokenAccount);
-          const balance = Number(account.amount) / Math.pow(10, decimals);
-          setTokenBalance(balance);
+          const balance = Number(account.amount) / Math.pow(10, tokenConfig.decimals);
+          if (!cancelled) {
+            setTokenBalance(balance);
+          }
         } catch (error) {
           // Token account doesn't exist
-          setTokenBalance(0);
+          if (!cancelled) {
+            setTokenBalance(0);
+          }
         }
       } catch (error) {
-        console.error('Failed to fetch token balance:', error);
-        setTokenBalance(null);
+        if (!cancelled) {
+          console.error('Failed to fetch token balance:', error);
+          setTokenBalance(null);
+        }
       } finally {
-        setIsLoadingBalance(false);
+        if (!cancelled) {
+          setIsLoadingBalance(false);
+        }
       }
     };
 
     fetchTokenBalance();
-  }, [selectedFunding, walletAddress, network, balance]);
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedFunding, walletAddress, network, balance, tokenConfig]);
 
   const copyAddress = async () => {
     try {
@@ -252,10 +284,7 @@ export function DepositWallet({ walletAddress, balance, onRefresh }: DepositWall
             Current {selectedFunding} Balance
           </span>
           {isLoadingBalance ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-              <span className="text-sm text-gray-400">Loading...</span>
-            </div>
+            <SkeletonBalance className="w-full" />
           ) : (
             <span className="text-2xl font-bold text-white">
               {selectedFunding === 'SOL' 

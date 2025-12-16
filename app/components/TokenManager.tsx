@@ -11,10 +11,12 @@ import {
   Key
 } from 'lucide-react';
 import { PublicKey } from '@solana/web3.js';
+import { useToast } from './ui/Toast';
 
 export function TokenManager() {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
+  const toast = useToast();
   const [mintAddress, setMintAddress] = useState('');
   const [targetAddress, setTargetAddress] = useState('');
   const [action, setAction] = useState<'freeze' | 'thaw' | 'burn' | 'mint'>('freeze');
@@ -37,7 +39,7 @@ export function TokenManager() {
       await sendTransaction(tx, connection);
       */
       
-      alert(`${action.toUpperCase()} action simulation successful!`);
+      toast.success(`${action.toUpperCase()} action simulation successful!`);
     } catch (e) {
       console.error(e);
     } finally {

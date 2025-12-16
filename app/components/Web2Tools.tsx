@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { BarChart3, Key, Webhook, Download, Plug, Share2, Users, ArrowLeft } from 'lucide-react';
+import { useToast } from './ui/Toast';
 
 interface ToolCardProps {
   title: string;
@@ -10,15 +11,16 @@ interface ToolCardProps {
   link: string;
   status?: 'coming-soon' | 'available';
   onNavigate?: () => void;
+  onComingSoon?: (title: string) => void;
 }
 
-function ToolCard({ title, description, icon, link, status = 'available', onNavigate }: ToolCardProps) {
+function ToolCard({ title, description, icon, link, status = 'available', onNavigate, onComingSoon }: ToolCardProps) {
   const handleClick = () => {
     if (status === 'available' && onNavigate) {
       onNavigate();
     } else if (status === 'available') {
       // TODO: Navigate to tool page when implemented
-      alert(`${title} is coming soon! This feature will be available in a future update.`);
+      onComingSoon?.(title);
     }
   };
 
@@ -126,7 +128,8 @@ export function Web2Tools({ onBack, onNavigateToSocial }: Web2ToolsProps) {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
           {tools.map((tool) => (
-            <ToolCard 
+            <ToolCard
+            onComingSoon={handleComingSoon} 
               key={tool.title} 
               {...tool}
               onNavigate={tool.title === 'Social Features' ? onNavigateToSocial : undefined}

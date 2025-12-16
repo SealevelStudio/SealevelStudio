@@ -195,23 +195,36 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (!address) return;
     
     try {
-      const response = await fetch(`/api/wallet/info?address=${address}`);
+      // Add abort controller to prevent race conditions
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      
+      const response = await fetch(`/api/wallet/info?address=${address}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       const data = await response.json();
       
       if (data.success && data.wallet) {
-        // If we have a user state, update it; otherwise just return the balance
-        if (user) {
-          const updated = { ...user, balance: data.wallet.balance };
+        // Check if user still exists and address matches (prevent race conditions)
+        const currentUser = user;
+        if (currentUser && currentUser.walletAddress === address) {
+          const updated = { ...currentUser, balance: data.wallet.balance };
           setUser(updated);
           saveProfile(updated);
-        } else {
-          // If called during initialization, we'll need to update the profile that was just loaded
-          // This will be handled by the caller
+        } else if (!currentUser) {
+          // If called during initialization, return the balance
           return data.wallet.balance;
         }
+        // If address doesn't match, ignore (stale request)
       }
     } catch (error) {
-      console.error('Failed to refresh balance:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Balance refresh aborted (timeout or cancelled)');
+      } else {
+        console.error('Failed to refresh balance:', error);
+      }
     }
   };
 
@@ -334,7 +347,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
           popup.close();
         } else if (event.data.type === 'TWITTER_OAUTH_ERROR') {
           console.error('Twitter OAuth error:', event.data.error);
-          alert(`Twitter OAuth failed: ${event.data.error}`);
+          console.error(`Twitter OAuth failed: ${event.data.error}`);
+          // Note: Toast notification should be handled by the component using this context
           window.removeEventListener('message', messageHandler);
           popup.close();
         }
@@ -351,7 +365,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }, 1000);
     } catch (error) {
       console.error('Twitter OAuth error:', error);
-      alert(`Failed to connect Twitter: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`Failed to connect Twitter: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Note: Toast notification should be handled by the component using this context
     }
   };
 
