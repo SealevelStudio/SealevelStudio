@@ -254,7 +254,7 @@ export function ArbitrageVisualization({
                 label={{ value: 'Confidence %', angle: -90, position: 'insideLeft' }}
               />
               <Tooltip
-                formatter={(value: number) => `${value.toFixed(1)}%`}
+                formatter={(value: number | undefined) => `${(value ?? 0).toFixed(1)}%`}
                 contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
               />
               <Line
