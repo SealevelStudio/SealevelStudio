@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state');
   const error = searchParams.get('error');
   const walletAddress = searchParams.get('wallet');
+  // Base64-encode wallet to prevent XSS
+  const walletAddressB64 = walletAddress ? Buffer.from(walletAddress, 'utf-8').toString('base64') : '';
 
   // Create a response that will close the popup and notify parent
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -117,10 +119,21 @@ export async function GET(request: NextRequest) {
         </head>
         <body>
           <script>
+            // Base64-decode walletAddress on the client
+            function b64DecodeUnicode(str) {
+              try {
+                // atob returns a binary string; decodeURIComponent correctly transforms it to unicode
+                return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+              } catch (e) {
+                return '';
+              }
+            }
             window.opener.postMessage({
               type: 'TWITTER_OAUTH_SUCCESS',
               username: ${JSON.stringify(username || '')},
-              walletAddress: ${JSON.stringify(walletAddress || '')}
+              walletAddress: b64DecodeUnicode(${JSON.stringify(walletAddressB64)})
             }, '${baseUrl}');
             window.close();
           </script>
