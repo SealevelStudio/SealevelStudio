@@ -138,6 +138,21 @@ export function createAttestationClient(
 
   // Lazy load function for IDL
   const loadProgram = async (): Promise<Program<any> | null> => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/0e75af24-937c-410d-acba-2c0a3e86fb7a',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sessionId:'debug-session',
+        runId:'pre-fix',
+        hypothesisId:'H1',
+        location:'app/lib/attestation/client.ts:140',
+        message:'loadProgram invoked',
+        data:{ hasExistingProgram: !!program, hasIdlPromise: !!idlLoadPromise },
+        timestamp:Date.now()
+      })
+    }).catch(()=>{});
+    // #endregion
     if (program) return program;
     if (idlLoadPromise) return idlLoadPromise;
 
@@ -187,11 +202,41 @@ export function createAttestationClient(
           }
           idl = await idlResponse.json();
         }
-        
-        program = new Program(idl, ATTESTATION_PROGRAM_ID, provider);
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/0e75af24-937c-410d-acba-2c0a3e86fb7a',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            sessionId:'debug-session',
+            runId:'pre-fix',
+            hypothesisId:'H2',
+            location:'app/lib/attestation/client.ts:191',
+            message:'Creating Program instance',
+            data:{ hasIdl: !!idl, usesProgramIdFromIdl: true },
+            timestamp:Date.now()
+          })
+        }).catch(()=>{});
+        // #endregion
+
+        program = new Program(idl as any, provider);
         console.log('✅ Attestation program loaded from IDL (beta testing mode)');
         return program;
       } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/0e75af24-937c-410d-acba-2c0a3e86fb7a',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            sessionId:'debug-session',
+            runId:'pre-fix',
+            hypothesisId:'H3',
+            location:'app/lib/attestation/client.ts:195',
+            message:'Error loading attestation IDL or creating Program',
+            data:{ errorMessage: (error as Error)?.message ?? 'unknown' },
+            timestamp:Date.now()
+          })
+        }).catch(()=>{});
+        // #endregion
         console.warn('⚠️ Could not load IDL, will check if program is deployed:', error);
         return null;
       }
@@ -222,8 +267,9 @@ export function createAttestationClient(
 
       // Use real program if available
       if (loadedProgram) {
+        const anyProgram = loadedProgram as any;
         try {
-          const tx = await loadedProgram.methods
+          const tx = await anyProgram.methods
             .initialize(merkleTree)
             .accounts({
               registry,
@@ -258,8 +304,9 @@ export function createAttestationClient(
 
       // Use real program if available (beta testing)
       if (loadedProgram) {
+        const anyProgram = loadedProgram as any;
         try {
-          const tx = await loadedProgram.methods
+          const tx = await anyProgram.methods
             .mintAttestation(
               new BN(usageCount),
               {
@@ -281,7 +328,7 @@ export function createAttestationClient(
             .rpc();
 
           // Get tier from the program response
-          const tier = await loadedProgram.methods
+          const tier = await anyProgram.methods
             .verifyEligibility(new BN(usageCount))
             .accounts({ 
               registry, 
@@ -329,8 +376,9 @@ export function createAttestationClient(
 
       // Use real program if available (beta testing)
       if (loadedProgram) {
+        const anyProgram = loadedProgram as any;
         try {
-          const tier = await loadedProgram.methods
+          const tier = await anyProgram.methods
             .verifyEligibility(new BN(usageCount))
             .accounts({
               registry,
@@ -359,8 +407,9 @@ export function createAttestationClient(
 
       // Use real program if available (beta testing)
       if (loadedProgram) {
+        const anyProgram = loadedProgram as any;
         try {
-          const tx = await loadedProgram.methods
+          const tx = await anyProgram.methods
             .updateThresholds(
               new BN(tier1),
               new BN(tier2),
@@ -414,8 +463,9 @@ export function createAttestationClient(
       const loadedProgram = await loadProgram();
 
       if (loadedProgram) {
+        const anyProgram = loadedProgram as any;
         try {
-          const tx = await loadedProgram.methods
+          const tx = await anyProgram.methods
             .initializePresaleRegistry(merkleTree)
             .accounts({
               presaleRegistry,
@@ -447,8 +497,9 @@ export function createAttestationClient(
       const loadedProgram = await loadProgram();
 
       if (loadedProgram) {
+        const anyProgram = loadedProgram as any;
         try {
-          const tx = await loadedProgram.methods
+          const tx = await anyProgram.methods
             .mintPresaleAttestation(
               new BN(solContributed),
               {
@@ -493,8 +544,9 @@ export function createAttestationClient(
       const loadedProgram = await loadProgram();
 
       if (loadedProgram) {
+        const anyProgram = loadedProgram as any;
         try {
-          const eligible = await loadedProgram.methods
+          const eligible = await anyProgram.methods
             .verifyPresaleEligibility(new BN(solContributed))
             .accounts({
               presaleRegistry,

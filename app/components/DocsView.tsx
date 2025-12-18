@@ -8,7 +8,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Wrapper to satisfy React/TypeScript JSX element typing for SyntaxHighlighter
-const CodeBlockHighlighter: React.FC<any> = (props) => <SyntaxHighlighter {...props} />;
+const CodeBlockHighlighter: React.FC<any> = (props) =>
+  React.createElement(SyntaxHighlighter as any, props);
 
 interface DocsViewProps {
   onBack?: () => void;

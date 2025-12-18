@@ -598,7 +598,7 @@ function AccountInspectorView({ connection, network, publicKey, initialSearchQue
             return {
               signature: sig.signature,
               slot: sig.slot,
-              blockTime: sig.blockTime,
+              blockTime: sig.blockTime ?? null,
               fee: tx?.meta?.fee || 0,
               status: tx?.meta?.err ? 'failed' : 'success',
             };
@@ -606,7 +606,7 @@ function AccountInspectorView({ connection, network, publicKey, initialSearchQue
             return {
               signature: sig.signature,
               slot: sig.slot,
-              blockTime: sig.blockTime,
+              blockTime: sig.blockTime ?? null,
               fee: 0,
               status: 'success' as const,
             };
